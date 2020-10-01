@@ -1,0 +1,76 @@
+plugins {
+    id 'java'
+    id 'maven-publish'
+}
+
+def getGitRef() {
+    try {
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'rev-parse', '--short', 'HEAD'
+            standardOutput = stdout
+        }
+        return stdout.toString().trim()
+    } catch (Throwable ignored) {
+        return "unknown"
+    }
+}
+
+String semver = "${version_major}.${version_minor}.${version_patch}"
+
+String build_number = System.getenv("PROMOTED_NUMBER")
+if (build_number == null)
+    build_number = System.getenv("BUILD_NUMBER")
+if (build_number == null)
+    build_number = getGitRef()
+
+version = "${semver}+${build_number}"
+group = 'li.cil.ceres'
+
+sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
+compileJava {
+    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
+
+    options.compilerArgs.addAll([
+            '-XDignore.symbol.file'
+    ])
+
+    options.fork = true
+    options.forkOptions.executable = 'javac'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.jetbrains:annotations:16.0.2'
+    implementation 'com.google.code.findbugs:jsr305:3.0.2'
+    implementation 'it.unimi.dsi:fastutil:8.2.1'
+    implementation 'org.apache.commons:commons-io:1.3.2'
+    implementation 'org.apache.commons:commons-lang3:3.8.1'
+    implementation 'org.apache.logging.log4j:log4j-api:2.11.2'
+    implementation 'org.apache.logging.log4j:log4j-core:2.11.2'
+    implementation 'org.ow2.asm:asm-commons:7.2'
+    implementation 'org.ow2.asm:asm:7.2'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.3.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.3.1'
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifact jar
+        }
+    }
+    repositories {
+        maven {
+            url System.getenv("MAVEN_PATH")
+        }
+    }
+}
+
+test {
+    useJUnitPlatform()
+}
