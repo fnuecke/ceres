@@ -109,6 +109,7 @@ public final class DataStreamSerialization {
             }
         }
 
+        @SuppressWarnings({"unchecked", "rawtypes"})
         @Override
         public void putArray(final String name, final Class<?> type, final Object value) throws SerializationException {
             if (type == boolean[].class) {
@@ -205,7 +206,7 @@ public final class DataStreamSerialization {
                         if (datum.getClass() != componentType) {
                             throw new SerializationException(String.format("Polymorphism detected in generic array [%s]. This is not supported.", name));
                         }
-                        serializer.serialize(new Serializer(componentStream), componentType, datum);
+                        serializer.serialize(new Serializer(componentStream), (Class) componentType, datum);
                         stream.writeInt(componentData.size());
                         stream.write(componentData.toByteArray());
                         componentData.reset();
@@ -218,6 +219,7 @@ public final class DataStreamSerialization {
             }
         }
 
+        @SuppressWarnings({"unchecked", "rawtypes"})
         @Override
         public void putObject(final String name, final Class<?> type, final Object value) throws SerializationException {
             if (type == String.class) {
@@ -228,7 +230,7 @@ public final class DataStreamSerialization {
                     throw new SerializationException(e);
                 }
             } else {
-                Ceres.getSerializer(type).serialize(this, type, value);
+                Ceres.getSerializer(type).serialize(this, (Class) type, value);
             }
         }
 

@@ -1,10 +1,13 @@
 package li.cil.ceres;
 
+import li.cil.ceres.api.SerializationException;
 import li.cil.ceres.api.Serialized;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Objects;
 import java.util.UUID;
 
 public final class SerializationTests {
@@ -85,7 +88,13 @@ public final class SerializationTests {
 
         Assertions.assertEquals(value.nonTransientInt, deserialized.nonTransientInt);
         Assertions.assertEquals(0, deserialized.transientInt);
-        Assertions.assertArrayEquals(value.finalIntArray, deserialized.finalIntArray);
+        Assertions.assertArrayEquals(new int[3], deserialized.finalIntArray);
+    }
+
+    @Test
+    public void testFinal() {
+        Assertions.assertThrows(SerializationException.class, () -> DataStreamSerialization.serialize(new SerializeFinalPrimitive()));
+        Assertions.assertThrows(SerializationException.class, () -> DataStreamSerialization.serialize(new SerializeFinalObject()));
     }
 
     @Test
@@ -120,6 +129,32 @@ public final class SerializationTests {
         Assertions.assertEquals(value.sup2, deserialized.sup2);
     }
 
+    @Test
+    public void testPrimitiveArray() {
+        final byte[] value = new byte[]{1, 2, 3, 4, 5, 6, 7, 8};
+
+        final ByteBuffer serialized = Assertions.assertDoesNotThrow(() -> DataStreamSerialization.serialize(value));
+
+        final byte[] deserialized = Assertions.assertDoesNotThrow(() -> DataStreamSerialization.deserialize(serialized, byte[].class, null));
+
+        Assertions.assertArrayEquals(value, deserialized);
+    }
+
+    @Test
+    public void testObjectArray() {
+        final Flat[] value = new Flat[2];
+        value[1] = new Flat();
+        value[1].byteValue = 23;
+        value[1].intValue = 23;
+        value[1].stringValue = "a test";
+
+        final ByteBuffer serialized = Assertions.assertDoesNotThrow(() -> DataStreamSerialization.serialize(value));
+
+        final Flat[] deserialized = Assertions.assertDoesNotThrow(() -> DataStreamSerialization.deserialize(serialized, Flat[].class, null));
+
+        Assertions.assertArrayEquals(value, deserialized);
+    }
+
     @Serialized
     private static final class Flat {
         private byte byteValue;
@@ -133,6 +168,33 @@ public final class SerializationTests {
         private long[] longArrayValue;
         private String stringValue;
         private UUID uuidValue;
+
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            final Flat flat = (Flat) o;
+            return byteValue == flat.byteValue &&
+                   shortValue == flat.shortValue &&
+                   intValue == flat.intValue &&
+                   longValue == flat.longValue &&
+                   Float.compare(flat.floatValue, floatValue) == 0 &&
+                   Double.compare(flat.doubleValue, doubleValue) == 0 &&
+                   Arrays.equals(byteArrayValue, flat.byteArrayValue) &&
+                   Arrays.equals(intArrayValue, flat.intArrayValue) &&
+                   Arrays.equals(longArrayValue, flat.longArrayValue) &&
+                   Objects.equals(stringValue, flat.stringValue) &&
+                   Objects.equals(uuidValue, flat.uuidValue);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = Objects.hash(byteValue, shortValue, intValue, longValue, floatValue, doubleValue, stringValue, uuidValue);
+            result = 31 * result + Arrays.hashCode(byteArrayValue);
+            result = 31 * result + Arrays.hashCode(intArrayValue);
+            result = 31 * result + Arrays.hashCode(longArrayValue);
+            return result;
+        }
     }
 
     private static final class FlatFields {
@@ -146,6 +208,14 @@ public final class SerializationTests {
         private transient int transientInt;
         private final int finalInt = 678;
         private final int[] finalIntArray = new int[3];
+    }
+
+    private static final class SerializeFinalPrimitive {
+        @Serialized private final int finalInt = 23;
+    }
+
+    private static final class SerializeFinalObject {
+        @Serialized private final int[] finalIntArray = {1, 2, 3};
     }
 
     @Serialized

@@ -9,8 +9,10 @@ import javax.annotation.Nullable;
 import java.util.UUID;
 
 public final class UUIDSerializer implements Serializer<UUID> {
+    public static final UUIDSerializer INSTANCE = new UUIDSerializer();
+
     @Override
-    public void serialize(final SerializationVisitor visitor, final Class<?> type, final Object value) throws SerializationException {
+    public void serialize(final SerializationVisitor visitor, final Class<UUID> type, final Object value) throws SerializationException {
         final UUID uuid = (UUID) value;
         visitor.putLong("msb", uuid.getMostSignificantBits());
         visitor.putLong("lsb", uuid.getLeastSignificantBits());

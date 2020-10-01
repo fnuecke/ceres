@@ -16,11 +16,12 @@ import javax.annotation.Nullable;
  * @param <T> the type the serializer provides serialization for.
  */
 public interface Serializer<T> {
+    @SuppressWarnings("unchecked")
     default void serialize(final SerializationVisitor visitor, final Object value) throws SerializationException {
-        serialize(visitor, value.getClass(), value);
+        serialize(visitor, (Class<T>) value.getClass(), value);
     }
 
-    void serialize(final SerializationVisitor visitor, final Class<?> type, final Object value) throws SerializationException;
+    void serialize(final SerializationVisitor visitor, final Class<T> type, final Object value) throws SerializationException;
 
     T deserialize(final DeserializationVisitor visitor, final Class<T> type, @Nullable final Object value) throws SerializationException;
 }

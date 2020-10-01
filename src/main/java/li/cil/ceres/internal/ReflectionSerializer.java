@@ -1,11 +1,10 @@
-package li.cil.ceres;
+package li.cil.ceres.internal;
 
 import li.cil.ceres.api.*;
 
 import javax.annotation.Nullable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 
@@ -18,10 +17,6 @@ final class ReflectionSerializer implements Serializer {
         for (final Field field : collectFields(type)) {
             try {
                 final Class fieldType = field.getType();
-                if (fieldType.isPrimitive() && Modifier.isFinal(field.getModifiers())) {
-                    continue;
-                }
-
                 if (fieldType == boolean.class) {
                     visitor.putBoolean(field.getName(), field.getBoolean(value));
                 } else if (fieldType == byte.class) {
@@ -74,7 +69,7 @@ final class ReflectionSerializer implements Serializer {
                 final Constructor constructor = type.getDeclaredConstructor();
                 constructor.setAccessible(true);
                 value = constructor.newInstance();
-            } catch (final InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
+            } catch (final Throwable e) {
                 throw new SerializationException(String.format("Failed instantiating type [%s]", type.getName()), e);
             }
         }
@@ -82,10 +77,6 @@ final class ReflectionSerializer implements Serializer {
         for (final Field field : collectFields(type)) {
             try {
                 final Class fieldType = field.getType();
-                if (fieldType.isPrimitive() && Modifier.isFinal(field.getModifiers())) {
-                    continue;
-                }
-
                 if (fieldType == boolean.class) {
                     field.setBoolean(value, visitor.getBoolean(field.getName()));
                 } else if (fieldType == byte.class) {
@@ -131,12 +122,15 @@ final class ReflectionSerializer implements Serializer {
             if (Modifier.isTransient(field.getModifiers())) {
                 continue;
             }
-            if (serializeFields || field.isAnnotationPresent(Serialized.class)) {
-                try {
-                    field.setAccessible(true);
-                } catch (final Throwable e) {
-                    throw new SerializationException(String.format("Failed accessing field [%s.%s]", type.getName(), field.getName()), e);
+            if (Modifier.isFinal(field.getModifiers())) {
+                if (field.isAnnotationPresent(Serialized.class)) {
+                    throw new SerializationException(String.format("Trying to use serialization on final field [%s.%s].", type.getName(), field.getName()));
                 }
+                continue;
+            }
+
+            field.setAccessible(true);
+            if (serializeFields || field.isAnnotationPresent(Serialized.class)) {
                 fields.add(field);
             }
         }
