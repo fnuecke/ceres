@@ -155,6 +155,18 @@ public final class SerializationTests {
         Assertions.assertArrayEquals(value, deserialized);
     }
 
+    @Test
+    public void testEnums() {
+        final WithEnum value = new WithEnum();
+        value.value = WithEnum.TestEnum.TWO;
+
+        final ByteBuffer serialized = Assertions.assertDoesNotThrow(() -> DataStreamSerialization.serialize(value));
+
+        final WithEnum deserialized = Assertions.assertDoesNotThrow(() -> DataStreamSerialization.deserialize(serialized, WithEnum.class, null));
+
+        Assertions.assertEquals(value.value, deserialized.value);
+    }
+
     @Serialized
     private static final class Flat {
         private byte byteValue;
@@ -236,5 +248,15 @@ public final class SerializationTests {
     @Serialized
     private static class SerializedSuperclass {
         int sup2;
+    }
+
+    @Serialized
+    private static final class WithEnum {
+        public enum TestEnum {
+            ONE,
+            TWO
+        }
+
+        public TestEnum value;
     }
 }

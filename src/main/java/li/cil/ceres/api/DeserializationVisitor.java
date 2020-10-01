@@ -36,6 +36,8 @@ public interface DeserializationVisitor {
 
     Object getArray(final String name, final Class<?> type) throws SerializationException;
 
+    Enum<?> getEnum(final String name, final Class<Enum<?>> type) throws SerializationException;
+
     <T> T getObject(final String name, final Class<T> type, @Nullable final T into) throws SerializationException;
 
     boolean isNull(final String name) throws SerializationException;

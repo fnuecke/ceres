@@ -190,6 +190,14 @@ final class SerializerCompiler {
                         mv.visitVarInsn(Opcodes.ALOAD, fieldValueIndex);
                         mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(SerializationVisitor.class),
                                 "putArray", "(Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Object;)V", true);
+                    } else if (fieldType.isEnum()) {
+                        mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);
+                        mv.visitLdcInsn(field.getName());
+                        mv.visitLdcInsn(Type.getType(fieldType));
+                        mv.visitVarInsn(Opcodes.ALOAD, fieldValueIndex);
+                        mv.visitTypeInsn(Opcodes.CHECKCAST, Type.getInternalName(Enum.class));
+                        mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(SerializationVisitor.class),
+                                "putEnum", "(Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Enum;)V", true);
                     } else {
                         final Label nothrow = new Label();
 
@@ -394,6 +402,13 @@ final class SerializerCompiler {
                         mv.visitLdcInsn(Type.getType(fieldType));
                         mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(DeserializationVisitor.class),
                                 "getArray", "(Ljava/lang/String;Ljava/lang/Class;)Ljava/lang/Object;", true);
+                        mv.visitTypeInsn(Opcodes.CHECKCAST, Type.getInternalName(fieldType));
+                    } else if (fieldType.isEnum()) {
+                        mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);
+                        mv.visitLdcInsn(field.getName());
+                        mv.visitLdcInsn(Type.getType(fieldType));
+                        mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(DeserializationVisitor.class),
+                                "getEnum", "(Ljava/lang/String;Ljava/lang/Class;)Ljava/lang/Enum;", true);
                         mv.visitTypeInsn(Opcodes.CHECKCAST, Type.getInternalName(fieldType));
                     } else {
                         mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);

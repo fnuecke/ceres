@@ -34,6 +34,8 @@ public interface SerializationVisitor {
 
     void putArray(final String name, final Class<?> type, final Object value) throws SerializationException;
 
+    void putEnum(final String name, final Class<Enum<?>> type, final Enum<?> value) throws SerializationException;
+
     void putObject(final String name, final Class<?> type, final Object value) throws SerializationException;
 
     void putNull(final String name, final boolean isNull) throws SerializationException;

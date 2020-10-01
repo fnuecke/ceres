@@ -1,6 +1,6 @@
 package li.cil.ceres.api;
 
-public final class SerializationException extends Exception {
+public final class SerializationException extends RuntimeException {
     public SerializationException() {
     }
 

@@ -12,6 +12,7 @@ import java.util.ArrayList;
 final class ReflectionSerializer implements Serializer {
     static final ReflectionSerializer INSTANCE = new ReflectionSerializer();
 
+    @SuppressWarnings("unchecked")
     @Override
     public void serialize(final SerializationVisitor visitor, final Class type, final Object value) throws SerializationException {
         for (final Field field : collectFields(type)) {
@@ -43,6 +44,8 @@ final class ReflectionSerializer implements Serializer {
 
                     if (fieldType.isArray()) {
                         visitor.putArray(field.getName(), fieldType, fieldValue);
+                    } else if (fieldType.isEnum()) {
+                        visitor.putEnum(field.getName(), fieldType, (Enum) fieldValue);
                     } else {
                         if (fieldValue.getClass() != fieldType) {
                             throw new SerializationException(String.format("Value type [%s] does not match field type [%s] in field [%s.%s]. Polymorphism is not supported.", value.getClass().getName(), fieldType.getName(), type.getName(), field.getName()));
@@ -98,6 +101,8 @@ final class ReflectionSerializer implements Serializer {
                         field.set(value, null);
                     } else if (fieldType.isArray()) {
                         field.set(value, visitor.getArray(field.getName(), fieldType));
+                    } else if (fieldType.isEnum()) {
+                        field.set(value, visitor.getEnum(field.getName(), fieldType));
                     } else {
                         field.set(value, visitor.getObject(field.getName(), fieldType, field.get(value)));
                     }

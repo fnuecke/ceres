@@ -16,6 +16,11 @@ public final class DataStreamSerialization {
         Ceres.getSerializer(value.getClass()).serialize(new Serializer(stream), value);
     }
 
+    @SuppressWarnings("unchecked")
+    public static <T> T deserialize(final DataInputStream stream, final T into) throws SerializationException {
+        return deserialize(stream, (Class<T>) into.getClass(), into);
+    }
+
     public static <T> T deserialize(final DataInputStream stream, final Class<T> type, @Nullable final T into) throws SerializationException {
         return Ceres.getSerializer(type).deserialize(new Deserializer(stream), type, into);
     }
@@ -217,6 +222,11 @@ public final class DataStreamSerialization {
             } else {
                 throw new IllegalArgumentException();
             }
+        }
+
+        @Override
+        public void putEnum(final String name, final Class<Enum<?>> type, final Enum<?> value) throws SerializationException {
+            putInt(name, value.ordinal());
         }
 
         @SuppressWarnings({"unchecked", "rawtypes"})
@@ -436,6 +446,11 @@ public final class DataStreamSerialization {
             } else {
                 throw new IllegalArgumentException();
             }
+        }
+
+        @Override
+        public Enum<?> getEnum(final String name, final Class<Enum<?>> type) throws SerializationException {
+            return type.getEnumConstants()[getInt(name)];
         }
 
         @SuppressWarnings("unchecked")
