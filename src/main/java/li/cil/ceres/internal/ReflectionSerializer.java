@@ -15,11 +15,28 @@ import java.util.ArrayList;
 final class ReflectionSerializer implements Serializer {
     private final ArrayList<Field> fields;
 
-    public ReflectionSerializer(final Class<?> type) throws SerializationException {
-        fields = SerializerUtils.collectFields(type);
+    @SuppressWarnings("unchecked")
+    public static <T> Serializer<T> generateSerializer(final Class<T> type) throws SerializationException {
+        try {
+            type.getDeclaredConstructor();
+        } catch (final NoSuchMethodException e) {
+            throw new SerializationException(String.format("Cannot generate serializer for type without default constructor [%s].", type));
+        }
+
+        final ArrayList<Field> fields = SerializerUtils.collectSerializableFields(type);
+        if (fields.isEmpty()) {
+            return SuperclassSerializer.INSTANCE;
+        }
+
         for (final Field field : fields) {
             field.setAccessible(true);
         }
+
+        return new ReflectionSerializer(fields);
+    }
+
+    private ReflectionSerializer(final ArrayList<Field> fields) {
+        this.fields = fields;
     }
 
     @Override

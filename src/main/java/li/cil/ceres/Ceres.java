@@ -69,6 +69,12 @@ public final class Ceres {
         }
     }
 
+    public static <T> boolean hasSerializer(final Class<T> type) {
+        synchronized (SERIALIZERS) {
+            return SERIALIZERS.containsKey(type) && !SerializerFactory.isSuperclassSerializer(SERIALIZERS.get(type));
+        }
+    }
+
     public static <T> void putSerializer(final Class<T> type, final Serializer<T> serializer) {
         synchronized (SERIALIZERS) {
             SERIALIZERS.put(type, serializer);

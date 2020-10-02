@@ -1,7 +1,6 @@
 package li.cil.ceres;
 
-import li.cil.ceres.api.SerializationException;
-import li.cil.ceres.api.Serialized;
+import li.cil.ceres.api.*;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -96,6 +95,7 @@ public final class SerializationTests {
         Assertions.assertThrows(SerializationException.class, () -> DataStreamSerialization.serialize(new SerializeFinalPrimitive()));
         Assertions.assertThrows(SerializationException.class, () -> DataStreamSerialization.serialize(new SerializeFinalEnum()));
         Assertions.assertThrows(SerializationException.class, () -> DataStreamSerialization.serialize(new SerializeFinalImmutableObject()));
+        Assertions.assertThrows(SerializationException.class, () -> DataStreamSerialization.serialize(new SerializedStaticFields()));
     }
 
     @Test
@@ -168,8 +168,52 @@ public final class SerializationTests {
         Assertions.assertEquals(value.value, deserialized.value);
     }
 
+    @Test
+    public void testIgnoreStaticFields() {
+        final IgnoreStaticFields value = new IgnoreStaticFields();
+
+        final ByteBuffer serialized = Assertions.assertDoesNotThrow(() -> DataStreamSerialization.serialize(value));
+
+        IgnoreStaticFields.s = 654;
+
+        Assertions.assertDoesNotThrow(() -> DataStreamSerialization.deserialize(serialized, IgnoreStaticFields.class, null));
+
+        Assertions.assertEquals(654, IgnoreStaticFields.s);
+    }
+
+    @Test
+    public void testCustomSerializer() {
+        final MultipleCustomSerializer value = new MultipleCustomSerializer();
+        value.a = new Custom();
+        value.a.x = 22;
+        value.c = new Custom();
+        value.c.x = 43;
+
+        final ByteBuffer serialized = Assertions.assertDoesNotThrow(() -> DataStreamSerialization.serialize(value));
+
+        final MultipleCustomSerializer deserialized = Assertions.assertDoesNotThrow(() -> DataStreamSerialization.deserialize(serialized, MultipleCustomSerializer.class, null));
+
+        Assertions.assertNotNull(deserialized.a);
+        Assertions.assertEquals(value.a.x * 2 + 1, deserialized.a.x);
+        Assertions.assertNull(deserialized.b);
+        Assertions.assertNotNull(deserialized.c);
+        Assertions.assertEquals(value.c.x * 2 + 1, deserialized.c.x);
+    }
+
+    @Test
+    public void testMutableIndirect() {
+        final MutableIndirectRoot value = new MutableIndirectRoot();
+        Assertions.assertDoesNotThrow(() -> DataStreamSerialization.serialize(value));
+    }
+
+    @Test
+    public void testImmutableIndirect() {
+        final ImmutableIndirectRoot value = new ImmutableIndirectRoot();
+        Assertions.assertThrows(SerializationException.class, () -> DataStreamSerialization.serialize(value));
+    }
+
     @Serialized
-    private static final class Flat {
+    public static final class Flat {
         private byte byteValue;
         private short shortValue;
         private int intValue;
@@ -210,31 +254,32 @@ public final class SerializationTests {
         }
     }
 
-    private static final class FlatFields {
+    public static final class FlatFields {
         @Serialized private int value1;
         private int value2;
     }
 
     @Serialized
-    private static final class WithModifiers {
+    public static final class WithModifiers {
         private int nonTransientInt;
         private transient int transientInt;
         private final int finalInt = 678;
         private final int[] finalIntArray = new int[3];
     }
 
-    private static final class SerializeFinalPrimitive {
+    public static final class SerializeFinalPrimitive {
         @Serialized private final int finalInt = 23;
     }
 
-    private static final class SerializeFinalEnum {
+    public static final class SerializeFinalEnum {
         public enum TestEnum {
             A, B
         }
+
         @Serialized private final TestEnum finalEnum = TestEnum.B;
     }
 
-    private static final class SerializeFinalImmutableObject {
+    public static final class SerializeFinalImmutableObject {
         @Serialized private final ImmutableClass finalValue = new ImmutableClass();
 
         @Serialized
@@ -243,33 +288,94 @@ public final class SerializationTests {
         }
     }
 
+    public static final class SerializedStaticFields {
+        @Serialized public static int s = 123;
+    }
+
     @Serialized
-    private static final class Recursive {
+    public static final class Recursive {
         private int value;
         private Recursive child;
     }
 
     @Serialized
-    private static class Subclass extends NonSerializedSuperclass {
+    public static class Subclass extends NonSerializedSuperclass {
         int val;
     }
 
-    private static class NonSerializedSuperclass extends SerializedSuperclass {
+    public static class NonSerializedSuperclass extends SerializedSuperclass {
         int sup1;
     }
 
     @Serialized
-    private static class SerializedSuperclass {
+    public static class SerializedSuperclass {
         int sup2;
     }
 
     @Serialized
-    private static final class WithEnum {
+    public static final class WithEnum {
         public enum TestEnum {
             ONE,
             TWO
         }
 
         public TestEnum value;
+    }
+
+    @Serialized
+    public static final class IgnoreStaticFields {
+        public static int s = 123;
+        public int i = 234;
+    }
+
+    public static final class Custom {
+        public int x;
+    }
+
+    @RegisterSerializer
+    public static final class CustomSerializer implements Serializer<Custom> {
+        @Override
+        public void serialize(final SerializationVisitor visitor, final Class<Custom> type, final Object value) throws SerializationException {
+            visitor.putInt("value", ((Custom) value).x * 2);
+        }
+
+        @Override
+        public Custom deserialize(final DeserializationVisitor visitor, final Class<Custom> type, final Object value) throws SerializationException {
+            Custom custom = (Custom) value;
+            if (custom == null) custom = new Custom();
+            custom.x = visitor.getInt("value") + 1;
+            return custom;
+        }
+    }
+
+    @Serialized
+    public static final class MultipleCustomSerializer {
+        public Custom a;
+        public Custom b;
+        public Custom c;
+    }
+
+    public static final class MutableIndirect {
+        @Serialized public int v;
+    }
+
+    public static final class MutableIndirectMid {
+        @Serialized public final MutableIndirect v = null;
+    }
+
+    public static final class MutableIndirectRoot {
+        @Serialized public final MutableIndirectMid v = null;
+    }
+
+    public static final class ImmutableIndirect {
+        @Serialized public final int v = 0;
+    }
+
+    public static final class ImmutableIndirectMid {
+        @Serialized public final ImmutableIndirect v = null;
+    }
+
+    public static final class ImmutableIndirectRoot {
+        @Serialized public final ImmutableIndirectMid v = null;
     }
 }
