@@ -11,7 +11,7 @@ public final class SerializerFactory {
         if (USE_GENERATED_CLASSES) {
             return SerializerCompiler.generateSerializer(type);
         } else {
-            return ReflectionSerializer.INSTANCE;
+            return new ReflectionSerializer(type);
         }
     }
 }

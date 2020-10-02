@@ -88,13 +88,14 @@ public final class SerializationTests {
 
         Assertions.assertEquals(value.nonTransientInt, deserialized.nonTransientInt);
         Assertions.assertEquals(0, deserialized.transientInt);
-        Assertions.assertArrayEquals(new int[3], deserialized.finalIntArray);
+        Assertions.assertArrayEquals(value.finalIntArray, deserialized.finalIntArray);
     }
 
     @Test
     public void testFinal() {
         Assertions.assertThrows(SerializationException.class, () -> DataStreamSerialization.serialize(new SerializeFinalPrimitive()));
-        Assertions.assertThrows(SerializationException.class, () -> DataStreamSerialization.serialize(new SerializeFinalObject()));
+        Assertions.assertThrows(SerializationException.class, () -> DataStreamSerialization.serialize(new SerializeFinalEnum()));
+        Assertions.assertThrows(SerializationException.class, () -> DataStreamSerialization.serialize(new SerializeFinalImmutableObject()));
     }
 
     @Test
@@ -226,8 +227,20 @@ public final class SerializationTests {
         @Serialized private final int finalInt = 23;
     }
 
-    private static final class SerializeFinalObject {
-        @Serialized private final int[] finalIntArray = {1, 2, 3};
+    private static final class SerializeFinalEnum {
+        public enum TestEnum {
+            A, B
+        }
+        @Serialized private final TestEnum finalEnum = TestEnum.B;
+    }
+
+    private static final class SerializeFinalImmutableObject {
+        @Serialized private final ImmutableClass finalValue = new ImmutableClass();
+
+        @Serialized
+        public static final class ImmutableClass {
+            private final int value = 123;
+        }
     }
 
     @Serialized

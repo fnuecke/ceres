@@ -1,6 +1,9 @@
 package li.cil.ceres.internal;
 
-import li.cil.ceres.api.*;
+import li.cil.ceres.api.DeserializationVisitor;
+import li.cil.ceres.api.SerializationException;
+import li.cil.ceres.api.SerializationVisitor;
+import li.cil.ceres.api.Serializer;
 
 import javax.annotation.Nullable;
 import java.lang.reflect.Constructor;
@@ -10,11 +13,18 @@ import java.util.ArrayList;
 
 @SuppressWarnings("rawtypes")
 final class ReflectionSerializer implements Serializer {
-    static final ReflectionSerializer INSTANCE = new ReflectionSerializer();
+    private final ArrayList<Field> fields;
+
+    public ReflectionSerializer(final Class<?> type) throws SerializationException {
+        fields = SerializerUtils.collectFields(type);
+        for (final Field field : fields) {
+            field.setAccessible(true);
+        }
+    }
 
     @Override
     public void serialize(final SerializationVisitor visitor, final Class type, final Object value) throws SerializationException {
-        for (final Field field : collectFields(type)) {
+        for (final Field field : fields) {
             try {
                 final Class fieldType = field.getType();
                 if (fieldType == boolean.class) {
@@ -64,7 +74,7 @@ final class ReflectionSerializer implements Serializer {
             }
         }
 
-        for (final Field field : collectFields(type)) {
+        for (final Field field : fields) {
             try {
                 if (visitor.exists(field.getName())) {
                     final Class fieldType = field.getType();
@@ -84,6 +94,12 @@ final class ReflectionSerializer implements Serializer {
                         field.setFloat(value, visitor.getFloat(field.getName()));
                     } else if (fieldType == double.class) {
                         field.setDouble(value, visitor.getDouble(field.getName()));
+                    } else if (Modifier.isFinal(field.getModifiers())) {
+                        // Must deserialize into existing final field references, we never overwrite final field values.
+                        // This means there is the weird edge-case where the length of a serialized array may
+                        // differ from the currently assigned array. In that case the serialized value silently
+                        // get ignores. I'll probably kick myself for this in the future.
+                        visitor.getObject(field.getName(), fieldType, field.get(value));
                     } else {
                         field.set(value, visitor.getObject(field.getName(), fieldType, field.get(value)));
                     }
@@ -99,27 +115,5 @@ final class ReflectionSerializer implements Serializer {
         }
 
         return value;
-    }
-
-    private static ArrayList<Field> collectFields(final Class type) throws SerializationException {
-        final boolean serializeFields = type.isAnnotationPresent(Serialized.class);
-        final ArrayList<Field> fields = new ArrayList<>();
-        for (final Field field : type.getDeclaredFields()) {
-            if (Modifier.isTransient(field.getModifiers())) {
-                continue;
-            }
-            if (Modifier.isFinal(field.getModifiers())) {
-                if (field.isAnnotationPresent(Serialized.class)) {
-                    throw new SerializationException(String.format("Trying to use serialization on final field [%s.%s].", type.getName(), field.getName()));
-                }
-                continue;
-            }
-
-            field.setAccessible(true);
-            if (serializeFields || field.isAnnotationPresent(Serialized.class)) {
-                fields.add(field);
-            }
-        }
-        return fields;
     }
 }

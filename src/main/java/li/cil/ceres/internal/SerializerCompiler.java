@@ -1,6 +1,9 @@
 package li.cil.ceres.internal;
 
-import li.cil.ceres.api.*;
+import li.cil.ceres.api.DeserializationVisitor;
+import li.cil.ceres.api.SerializationException;
+import li.cil.ceres.api.SerializationVisitor;
+import li.cil.ceres.api.Serializer;
 import org.objectweb.asm.*;
 import org.objectweb.asm.signature.SignatureVisitor;
 import org.objectweb.asm.signature.SignatureWriter;
@@ -24,8 +27,15 @@ final class SerializerCompiler {
         }
     }
 
+    private static final int SERIALIZER_VISITOR_INDEX = 1;
+    private static final int SERIALIZER_VALUE_INDEX = 3;
+    private static final int SERIALIZER_FIELD_VALUE_INDEX = 4;
+    private static final int DESERIALIZER_VISITOR_INDEX = 1;
+    private static final int DESERIALIZER_VALUE_INDEX = 3;
+
     @SuppressWarnings("unchecked")
     public static <T> Serializer<T> generateSerializer(final Class<T> type) throws SerializationException {
+        final ArrayList<Field> fields = SerializerUtils.collectFields(type);
         final String className = Type.getInternalName(type) + "$" + Type.getInternalName(Serializer.class);
 
         // Generate signature for `implements Serializer<type>`
@@ -67,7 +77,7 @@ final class SerializerCompiler {
         });
         serialize.visitCode();
         {
-            generateSerializeMethod(serialize, type);
+            generateSerializeMethod(serialize, type, fields);
         }
         serialize.visitMaxs(-1, -1);
         serialize.visitEnd();
@@ -78,7 +88,7 @@ final class SerializerCompiler {
         });
         deserialize.visitCode();
         {
-            generateDeserializeMethod(deserialize, type);
+            generateDeserializeMethod(deserialize, type, fields);
         }
         deserialize.visitMaxs(-1, -1);
         deserialize.visitEnd();
@@ -93,91 +103,49 @@ final class SerializerCompiler {
         }
     }
 
-    private static <T> void generateSerializeMethod(final MethodVisitor mv, final Class<T> type) throws SerializationException {
-        final int visitorIndex = 1;
-        final int valueIndex = 3;
-        final int fieldValueIndex = 4;
+    private static <T> void generateSerializeMethod(final MethodVisitor mv, final Class<T> type, final ArrayList<Field> fields) {
         int fieldValueCount = 0;
 
-        mv.visitVarInsn(Opcodes.ALOAD, valueIndex);
+        // value = (type) value; to satisfy class verification.
+        mv.visitVarInsn(Opcodes.ALOAD, SERIALIZER_VALUE_INDEX);
         mv.visitTypeInsn(Opcodes.CHECKCAST, Type.getInternalName(type));
-        mv.visitVarInsn(Opcodes.ASTORE, valueIndex);
+        mv.visitVarInsn(Opcodes.ASTORE, SERIALIZER_VALUE_INDEX);
 
-        for (final Field field : collectFields(type)) {
+        for (final Field field : fields) {
             final Class<?> fieldType = field.getType();
             if (fieldType == boolean.class) {
-                mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);
-                mv.visitLdcInsn(field.getName());
-                mv.visitVarInsn(Opcodes.ALOAD, valueIndex);
-                mv.visitFieldInsn(Opcodes.GETFIELD, Type.getInternalName(type), field.getName(), Type.getDescriptor(fieldType));
-                mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(SerializationVisitor.class),
-                        "putBoolean", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class), Type.getType(fieldType)), true);
+                generateSerializePrimitiveCall(mv, type, field, fieldType, "putBoolean");
             } else if (fieldType == byte.class) {
-                mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);
-                mv.visitLdcInsn(field.getName());
-                mv.visitVarInsn(Opcodes.ALOAD, valueIndex);
-                mv.visitFieldInsn(Opcodes.GETFIELD, Type.getInternalName(type), field.getName(), Type.getDescriptor(fieldType));
-                mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(SerializationVisitor.class),
-                        "putByte", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class), Type.getType(fieldType)), true);
+                generateSerializePrimitiveCall(mv, type, field, fieldType, "putByte");
             } else if (fieldType == char.class) {
-                mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);
-                mv.visitLdcInsn(field.getName());
-                mv.visitVarInsn(Opcodes.ALOAD, valueIndex);
-                mv.visitFieldInsn(Opcodes.GETFIELD, Type.getInternalName(type), field.getName(), Type.getDescriptor(fieldType));
-                mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(SerializationVisitor.class),
-                        "putChar", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class), Type.getType(fieldType)), true);
+                generateSerializePrimitiveCall(mv, type, field, fieldType, "putChar");
             } else if (fieldType == short.class) {
-                mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);
-                mv.visitLdcInsn(field.getName());
-                mv.visitVarInsn(Opcodes.ALOAD, valueIndex);
-                mv.visitFieldInsn(Opcodes.GETFIELD, Type.getInternalName(type), field.getName(), Type.getDescriptor(fieldType));
-                mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(SerializationVisitor.class),
-                        "putShort", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class), Type.getType(fieldType)), true);
+                generateSerializePrimitiveCall(mv, type, field, fieldType, "putShort");
             } else if (fieldType == int.class) {
-                mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);
-                mv.visitLdcInsn(field.getName());
-                mv.visitVarInsn(Opcodes.ALOAD, valueIndex);
-                mv.visitFieldInsn(Opcodes.GETFIELD, Type.getInternalName(type), field.getName(), Type.getDescriptor(fieldType));
-                mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(SerializationVisitor.class),
-                        "putInt", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class), Type.getType(fieldType)), true);
+                generateSerializePrimitiveCall(mv, type, field, fieldType, "putInt");
             } else if (fieldType == long.class) {
-                mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);
-                mv.visitLdcInsn(field.getName());
-                mv.visitVarInsn(Opcodes.ALOAD, valueIndex);
-                mv.visitFieldInsn(Opcodes.GETFIELD, Type.getInternalName(type), field.getName(), Type.getDescriptor(fieldType));
-                mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(SerializationVisitor.class),
-                        "putLong", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class), Type.getType(fieldType)), true);
+                generateSerializePrimitiveCall(mv, type, field, fieldType, "putLong");
             } else if (fieldType == float.class) {
-                mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);
-                mv.visitLdcInsn(field.getName());
-                mv.visitVarInsn(Opcodes.ALOAD, valueIndex);
-                mv.visitFieldInsn(Opcodes.GETFIELD, Type.getInternalName(type), field.getName(), Type.getDescriptor(fieldType));
-                mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(SerializationVisitor.class),
-                        "putFloat", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class), Type.getType(fieldType)), true);
+                generateSerializePrimitiveCall(mv, type, field, fieldType, "putFloat");
             } else if (fieldType == double.class) {
-                mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);
-                mv.visitLdcInsn(field.getName());
-                mv.visitVarInsn(Opcodes.ALOAD, valueIndex);
-                mv.visitFieldInsn(Opcodes.GETFIELD, Type.getInternalName(type), field.getName(), Type.getDescriptor(fieldType));
-                mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(SerializationVisitor.class),
-                        "putDouble", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class), Type.getType(fieldType)), true);
+                generateSerializePrimitiveCall(mv, type, field, fieldType, "putDouble");
             } else {
                 final Label fieldValueValidLabel = new Label();
                 final Label nothrowLabel = new Label(), endifLabel = new Label();
 
-                mv.visitLocalVariable("fieldValue" + fieldValueCount++, Type.getDescriptor(fieldType), null, fieldValueValidLabel, endifLabel, fieldValueIndex);
+                mv.visitLocalVariable("fieldValue" + fieldValueCount++, Type.getDescriptor(fieldType), null, fieldValueValidLabel, endifLabel, SERIALIZER_FIELD_VALUE_INDEX);
 
-                mv.visitVarInsn(Opcodes.ALOAD, valueIndex);
+                mv.visitVarInsn(Opcodes.ALOAD, SERIALIZER_VALUE_INDEX);
                 mv.visitFieldInsn(Opcodes.GETFIELD, Type.getInternalName(type), field.getName(), Type.getDescriptor(fieldType));
 
                 mv.visitInsn(Opcodes.DUP);
-                mv.visitVarInsn(Opcodes.ASTORE, fieldValueIndex);
+                mv.visitVarInsn(Opcodes.ASTORE, SERIALIZER_FIELD_VALUE_INDEX);
                 mv.visitLabel(fieldValueValidLabel);
 
                 // if (fieldValue != null &&
                 mv.visitJumpInsn(Opcodes.IFNULL, nothrowLabel);
                 //     fieldValue.getClass() != fieldType)
-                mv.visitVarInsn(Opcodes.ALOAD, fieldValueIndex);
+                mv.visitVarInsn(Opcodes.ALOAD, SERIALIZER_FIELD_VALUE_INDEX);
                 mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Type.getInternalName(Object.class),
                         "getClass", "()Ljava/lang/Class;", false);
                 mv.visitLdcInsn(Type.getType(fieldType));
@@ -198,7 +166,7 @@ final class SerializerCompiler {
                         // args[0] = fieldValue.getClass().getName()
                         mv.visitInsn(Opcodes.DUP); // [..., {}, {}]
                         mv.visitLdcInsn(0); // [..., {}, {}, 0]
-                        mv.visitVarInsn(Opcodes.ALOAD, fieldValueIndex); // [..., {}, {}, 0, fieldValue]
+                        mv.visitVarInsn(Opcodes.ALOAD, SERIALIZER_FIELD_VALUE_INDEX); // [..., {}, {}, 0, fieldValue]
                         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Type.getInternalName(Object.class),
                                 "getClass", "()Ljava/lang/Class;", false); // [..., {}, {}, 0, fieldValueType]
                         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Type.getInternalName(Class.class),
@@ -234,10 +202,10 @@ final class SerializerCompiler {
                 // else
                 mv.visitLabel(nothrowLabel);
                 {
-                    mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);
+                    mv.visitVarInsn(Opcodes.ALOAD, SERIALIZER_VISITOR_INDEX);
                     mv.visitLdcInsn(field.getName());
                     mv.visitLdcInsn(Type.getType(fieldType));
-                    mv.visitVarInsn(Opcodes.ALOAD, fieldValueIndex);
+                    mv.visitVarInsn(Opcodes.ALOAD, SERIALIZER_FIELD_VALUE_INDEX);
                     mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(SerializationVisitor.class),
                             "putObject", "(Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Object;)V", true);
                 }
@@ -247,12 +215,12 @@ final class SerializerCompiler {
 
         final Class<?> parentType = type.getSuperclass();
         if (parentType != null && parentType != Object.class) {
-            mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);
+            mv.visitVarInsn(Opcodes.ALOAD, SERIALIZER_VISITOR_INDEX);
             mv.visitLdcInsn("<super>");
             mv.visitLdcInsn(Type.getType(type));
             mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Type.getInternalName(Class.class),
                     "getSuperclass", "()Ljava/lang/Class;", false);
-            mv.visitVarInsn(Opcodes.ALOAD, valueIndex);
+            mv.visitVarInsn(Opcodes.ALOAD, SERIALIZER_VALUE_INDEX);
             mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(SerializationVisitor.class),
                     "putObject", "(Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Object;)V", true);
         }
@@ -260,12 +228,9 @@ final class SerializerCompiler {
         mv.visitInsn(Opcodes.RETURN);
     }
 
-    private static <T> void generateDeserializeMethod(final MethodVisitor mv, final Class<T> type) throws SerializationException {
-        final int visitorIndex = 1;
-        final int valueIndex = 3;
-
+    private static <T> void generateDeserializeMethod(final MethodVisitor mv, final Class<T> type, final ArrayList<Field> fields) {
         final Label nonnullLabel = new Label();
-        mv.visitVarInsn(Opcodes.ALOAD, valueIndex);
+        mv.visitVarInsn(Opcodes.ALOAD, DESERIALIZER_VALUE_INDEX);
 
         // if (value == null)
         mv.visitJumpInsn(Opcodes.IFNONNULL, nonnullLabel);
@@ -274,117 +239,99 @@ final class SerializerCompiler {
             mv.visitTypeInsn(Opcodes.NEW, Type.getInternalName(type));
             mv.visitInsn(Opcodes.DUP);
             mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Type.getInternalName(type), "<init>", "()V", false);
-            mv.visitVarInsn(Opcodes.ASTORE, valueIndex);
+            mv.visitVarInsn(Opcodes.ASTORE, DESERIALIZER_VALUE_INDEX);
         }
         mv.visitLabel(nonnullLabel);
 
-        mv.visitVarInsn(Opcodes.ALOAD, valueIndex);
+        mv.visitVarInsn(Opcodes.ALOAD, DESERIALIZER_VALUE_INDEX);
         mv.visitTypeInsn(Opcodes.CHECKCAST, Type.getInternalName(type));
-        mv.visitVarInsn(Opcodes.ASTORE, valueIndex);
+        mv.visitVarInsn(Opcodes.ASTORE, DESERIALIZER_VALUE_INDEX);
 
-        for (final Field field : collectFields(type)) {
+        for (final Field field : fields) {
             final Label endifLabel = new Label();
 
             // if (visitor.exists(field.getName()))
-            mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);
+            mv.visitVarInsn(Opcodes.ALOAD, DESERIALIZER_VISITOR_INDEX);
             mv.visitLdcInsn(field.getName());
             mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(DeserializationVisitor.class),
                     "exists", "(Ljava/lang/String;)Z", true);
             mv.visitJumpInsn(Opcodes.IFEQ, endifLabel);
             {
-                mv.visitVarInsn(Opcodes.ALOAD, valueIndex);
+                mv.visitVarInsn(Opcodes.ALOAD, DESERIALIZER_VALUE_INDEX);
 
                 final Class<?> fieldType = field.getType();
                 if (fieldType == boolean.class) {
-                    mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);
-                    mv.visitLdcInsn(field.getName());
-                    mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(DeserializationVisitor.class),
-                            "getBoolean", Type.getMethodDescriptor(Type.getType(fieldType), Type.getType(String.class)), true);
+                    generateDeserializePrimitiveCall(mv, type, field, fieldType, "getBoolean");
                 } else if (fieldType == byte.class) {
-                    mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);
-                    mv.visitLdcInsn(field.getName());
-                    mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(DeserializationVisitor.class),
-                            "getByte", Type.getMethodDescriptor(Type.getType(fieldType), Type.getType(String.class)), true);
+                    generateDeserializePrimitiveCall(mv, type, field, fieldType, "getByte");
                 } else if (fieldType == char.class) {
-                    mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);
-                    mv.visitLdcInsn(field.getName());
-                    mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(DeserializationVisitor.class),
-                            "getChar", Type.getMethodDescriptor(Type.getType(fieldType), Type.getType(String.class)), true);
+                    generateDeserializePrimitiveCall(mv, type, field, fieldType, "getChar");
                 } else if (fieldType == short.class) {
-                    mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);
-                    mv.visitLdcInsn(field.getName());
-                    mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(DeserializationVisitor.class),
-                            "getShort", Type.getMethodDescriptor(Type.getType(fieldType), Type.getType(String.class)), true);
+                    generateDeserializePrimitiveCall(mv, type, field, fieldType, "getShort");
                 } else if (fieldType == int.class) {
-                    mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);
-                    mv.visitLdcInsn(field.getName());
-                    mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(DeserializationVisitor.class),
-                            "getInt", Type.getMethodDescriptor(Type.getType(fieldType), Type.getType(String.class)), true);
+                    generateDeserializePrimitiveCall(mv, type, field, fieldType, "getInt");
                 } else if (fieldType == long.class) {
-                    mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);
-                    mv.visitLdcInsn(field.getName());
-                    mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(DeserializationVisitor.class),
-                            "getLong", Type.getMethodDescriptor(Type.getType(fieldType), Type.getType(String.class)), true);
+                    generateDeserializePrimitiveCall(mv, type, field, fieldType, "getLong");
                 } else if (fieldType == float.class) {
-                    mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);
-                    mv.visitLdcInsn(field.getName());
-                    mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(DeserializationVisitor.class),
-                            "getFloat", Type.getMethodDescriptor(Type.getType(fieldType), Type.getType(String.class)), true);
+                    generateDeserializePrimitiveCall(mv, type, field, fieldType, "getFloat");
                 } else if (fieldType == double.class) {
-                    mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);
-                    mv.visitLdcInsn(field.getName());
-                    mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(DeserializationVisitor.class),
-                            "getDouble", Type.getMethodDescriptor(Type.getType(fieldType), Type.getType(String.class)), true);
+                    generateDeserializePrimitiveCall(mv, type, field, fieldType, "getDouble");
+                } else if (Modifier.isFinal(field.getModifiers())) {
+                    // Must deserialize into existing final field references, we never overwrite final field values.
+                    // This means there is the weird edge-case where the length of a serialized array may
+                    // differ from the currently assigned array. In that case the serialized value silently
+                    // get ignores. I'll probably kick myself for this in the future.
+                    generateDeserializeObjectCall(mv, type, field, fieldType);
+                    mv.visitInsn(Opcodes.POP2);
                 } else {
-                    mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);
-                    mv.visitLdcInsn(field.getName());
-                    mv.visitLdcInsn(Type.getType(fieldType));
-                    mv.visitVarInsn(Opcodes.ALOAD, valueIndex);
-                    mv.visitFieldInsn(Opcodes.GETFIELD, Type.getInternalName(type), field.getName(), Type.getDescriptor(fieldType));
-                    mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(DeserializationVisitor.class),
-                            "getObject", "(Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Object;)Ljava/lang/Object;", true);
+                    generateDeserializeObjectCall(mv, type, field, fieldType);
                     mv.visitTypeInsn(Opcodes.CHECKCAST, Type.getInternalName(fieldType));
+                    mv.visitFieldInsn(Opcodes.PUTFIELD, Type.getInternalName(type), field.getName(), Type.getDescriptor(fieldType));
                 }
-
-                mv.visitFieldInsn(Opcodes.PUTFIELD, Type.getInternalName(type), field.getName(), Type.getDescriptor(fieldType));
             }
             mv.visitLabel(endifLabel);
         }
 
         final Class<?> parentType = type.getSuperclass();
         if (parentType != null && parentType != Object.class) {
-            mv.visitVarInsn(Opcodes.ALOAD, visitorIndex);
+            mv.visitVarInsn(Opcodes.ALOAD, DESERIALIZER_VISITOR_INDEX);
             mv.visitLdcInsn("<super>");
             mv.visitLdcInsn(Type.getType(type));
             mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Type.getInternalName(Class.class),
                     "getSuperclass", "()Ljava/lang/Class;", false);
-            mv.visitVarInsn(Opcodes.ALOAD, valueIndex);
+            mv.visitVarInsn(Opcodes.ALOAD, DESERIALIZER_VALUE_INDEX);
             mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(DeserializationVisitor.class),
                     "getObject", "(Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Object;)Ljava/lang/Object;", true);
         }
 
-        mv.visitVarInsn(Opcodes.ALOAD, valueIndex);
+        mv.visitVarInsn(Opcodes.ALOAD, DESERIALIZER_VALUE_INDEX);
         mv.visitInsn(Opcodes.ARETURN);
     }
 
-    private static ArrayList<Field> collectFields(final Class<?> type) throws SerializationException {
-        final boolean serializeFields = type.isAnnotationPresent(Serialized.class);
-        final ArrayList<Field> fields = new ArrayList<>();
-        for (final Field field : type.getDeclaredFields()) {
-            if (Modifier.isTransient(field.getModifiers())) {
-                continue;
-            }
-            if (Modifier.isFinal(field.getModifiers())) {
-                if (field.isAnnotationPresent(Serialized.class)) {
-                    throw new SerializationException(String.format("Trying to use serialization on final field [%s.%s].", type.getName(), field.getName()));
-                }
-                continue;
-            }
+    private static <T> void generateDeserializeObjectCall(final MethodVisitor mv, final Class<T> type, final Field field, final Class<?> fieldType) {
+        mv.visitVarInsn(Opcodes.ALOAD, DESERIALIZER_VISITOR_INDEX);
+        mv.visitLdcInsn(field.getName());
+        mv.visitLdcInsn(Type.getType(fieldType));
+        mv.visitVarInsn(Opcodes.ALOAD, DESERIALIZER_VALUE_INDEX);
+        mv.visitFieldInsn(Opcodes.GETFIELD, Type.getInternalName(type), field.getName(), Type.getDescriptor(fieldType));
+        mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(DeserializationVisitor.class),
+                "getObject", "(Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Object;)Ljava/lang/Object;", true);
+    }
 
-            if (serializeFields || field.isAnnotationPresent(Serialized.class)) {
-                fields.add(field);
-            }
-        }
-        return fields;
+    private static <T> void generateSerializePrimitiveCall(final MethodVisitor mv, final Class<T> type, final Field field, final Class<?> fieldType, final String name) {
+        mv.visitVarInsn(Opcodes.ALOAD, SERIALIZER_VISITOR_INDEX);
+        mv.visitLdcInsn(field.getName());
+        mv.visitVarInsn(Opcodes.ALOAD, SERIALIZER_VALUE_INDEX);
+        mv.visitFieldInsn(Opcodes.GETFIELD, Type.getInternalName(type), field.getName(), Type.getDescriptor(fieldType));
+        mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(SerializationVisitor.class),
+                name, Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class), Type.getType(fieldType)), true);
+    }
+
+    private static <T> void generateDeserializePrimitiveCall(final MethodVisitor mv, final Class<T> type, final Field field, final Class<?> fieldType, final String name) {
+        mv.visitVarInsn(Opcodes.ALOAD, DESERIALIZER_VISITOR_INDEX);
+        mv.visitLdcInsn(field.getName());
+        mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(DeserializationVisitor.class),
+                name, Type.getMethodDescriptor(Type.getType(fieldType), Type.getType(String.class)), true);
+        mv.visitFieldInsn(Opcodes.PUTFIELD, Type.getInternalName(type), field.getName(), Type.getDescriptor(fieldType));
     }
 }
