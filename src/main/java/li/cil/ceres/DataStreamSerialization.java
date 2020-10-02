@@ -3,6 +3,7 @@ package li.cil.ceres;
 import li.cil.ceres.api.DeserializationVisitor;
 import li.cil.ceres.api.SerializationException;
 import li.cil.ceres.api.SerializationVisitor;
+import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nullable;
 import java.io.*;
@@ -116,7 +117,11 @@ public final class DataStreamSerialization {
 
         @SuppressWarnings({"unchecked", "rawtypes"})
         @Override
-        public void putArray(final String name, final Class<?> type, final Object value) throws SerializationException {
+        public void putObject(final String name, final Class<?> type, @Nullable final Object value) throws SerializationException {
+            if (putIsNull(value)) {
+                return;
+            }
+
             if (type == boolean[].class) {
                 final boolean[] data = (boolean[]) value;
                 try {
@@ -219,20 +224,9 @@ public final class DataStreamSerialization {
                 } catch (final IOException e) {
                     throw new SerializationException(e);
                 }
-            } else {
-                throw new IllegalArgumentException();
-            }
-        }
-
-        @Override
-        public void putEnum(final String name, final Class<Enum<?>> type, final Enum<?> value) throws SerializationException {
-            putInt(name, value.ordinal());
-        }
-
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        @Override
-        public void putObject(final String name, final Class<?> type, final Object value) throws SerializationException {
-            if (type == String.class) {
+            } else if (type.isEnum()) {
+                putInt(name, ((Enum) value).ordinal());
+            } else if (type == String.class) {
                 final String data = (String) value;
                 try {
                     stream.writeUTF(data);
@@ -244,10 +238,12 @@ public final class DataStreamSerialization {
             }
         }
 
-        @Override
-        public void putNull(final String name, final boolean isNull) throws SerializationException {
+        @Contract("null -> true")
+        private boolean putIsNull(@Nullable final Object value) {
             try {
+                final boolean isNull = value == null;
                 stream.writeBoolean(isNull);
+                return isNull;
             } catch (final IOException e) {
                 throw new SerializationException(e);
             }
@@ -333,13 +329,22 @@ public final class DataStreamSerialization {
             }
         }
 
-        @SuppressWarnings({"rawtypes", "unchecked"})
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        @Nullable
         @Override
-        public Object getArray(final String name, final Class<?> type) throws SerializationException {
+        public Object getObject(final String name, final Class<?> type, @Nullable final Object into) throws SerializationException {
+            if (isNull()) {
+                return null;
+            }
+
             if (type == boolean[].class) {
                 try {
                     final int length = stream.readInt();
-                    final boolean[] data = new boolean[length];
+                    boolean[] data = (boolean[]) into;
+                    if (data == null || data.length != length) {
+                        data = new boolean[length];
+                    }
+
                     for (int i = 0; i < length; i++) {
                         data[i] = stream.readBoolean();
                     }
@@ -350,7 +355,11 @@ public final class DataStreamSerialization {
             } else if (type == byte[].class) {
                 try {
                     final int length = stream.readInt();
-                    final byte[] data = new byte[length];
+                    byte[] data = (byte[]) into;
+                    if (data == null || data.length != length) {
+                        data = new byte[length];
+                    }
+
                     //noinspection ResultOfMethodCallIgnored
                     stream.read(data);
                     return data;
@@ -360,7 +369,11 @@ public final class DataStreamSerialization {
             } else if (type == char[].class) {
                 try {
                     final int length = stream.readInt();
-                    final char[] data = new char[length];
+                    char[] data = (char[]) into;
+                    if (data == null || data.length != length) {
+                        data = new char[length];
+                    }
+
                     for (int i = 0; i < length; i++) {
                         data[i] = stream.readChar();
                     }
@@ -371,7 +384,11 @@ public final class DataStreamSerialization {
             } else if (type == short[].class) {
                 try {
                     final int length = stream.readInt();
-                    final short[] data = new short[length];
+                    short[] data = (short[]) into;
+                    if (data == null || data.length != length) {
+                        data = new short[length];
+                    }
+
                     for (int i = 0; i < length; i++) {
                         data[i] = stream.readShort();
                     }
@@ -382,7 +399,11 @@ public final class DataStreamSerialization {
             } else if (type == int[].class) {
                 try {
                     final int length = stream.readInt();
-                    final int[] data = new int[length];
+                    int[] data = (int[]) into;
+                    if (data == null || data.length != length) {
+                        data = new int[length];
+                    }
+
                     for (int i = 0; i < length; i++) {
                         data[i] = stream.readInt();
                     }
@@ -393,7 +414,11 @@ public final class DataStreamSerialization {
             } else if (type == long[].class) {
                 try {
                     final int length = stream.readInt();
-                    final long[] data = new long[length];
+                    long[] data = (long[]) into;
+                    if (data == null || data.length != length) {
+                        data = new long[length];
+                    }
+
                     for (int i = 0; i < length; i++) {
                         data[i] = stream.readLong();
                     }
@@ -404,7 +429,11 @@ public final class DataStreamSerialization {
             } else if (type == float[].class) {
                 try {
                     final int length = stream.readInt();
-                    final float[] data = new float[length];
+                    float[] data = (float[]) into;
+                    if (data == null || data.length != length) {
+                        data = new float[length];
+                    }
+
                     for (int i = 0; i < length; i++) {
                         data[i] = stream.readFloat();
                     }
@@ -415,7 +444,11 @@ public final class DataStreamSerialization {
             } else if (type == double[].class) {
                 try {
                     final int length = stream.readInt();
-                    final double[] data = new double[length];
+                    double[] data = (double[]) into;
+                    if (data == null || data.length != length) {
+                        data = new double[length];
+                    }
+
                     for (int i = 0; i < length; i++) {
                         data[i] = stream.readDouble();
                     }
@@ -428,7 +461,11 @@ public final class DataStreamSerialization {
                 final li.cil.ceres.api.Serializer<?> serializer = Ceres.getSerializer(componentType);
                 try {
                     final int length = stream.readInt();
-                    final Object[] data = (Object[]) Array.newInstance(componentType, length);
+                    Object[] data = (Object[]) into;
+                    if (data == null || data.length != length) {
+                        data = (Object[]) Array.newInstance(componentType, length);
+                    }
+
                     for (int i = 0; i < length; i++) {
                         final int componentLength = stream.readInt();
                         if (componentLength <= 0) {
@@ -443,33 +480,25 @@ public final class DataStreamSerialization {
                 } catch (final IOException e) {
                     throw new SerializationException(e);
                 }
-            } else {
-                throw new IllegalArgumentException();
-            }
-        }
-
-        @Override
-        public Enum<?> getEnum(final String name, final Class<Enum<?>> type) throws SerializationException {
-            return type.getEnumConstants()[getInt(name)];
-        }
-
-        @SuppressWarnings("unchecked")
-        @Nullable
-        @Override
-        public <T> T getObject(final String name, final Class<T> type, @Nullable final T into) throws SerializationException {
-            if (type == String.class) {
+            } else if (type.isEnum()) {
+                return type.getEnumConstants()[getInt(name)];
+            } else if (type == String.class) {
                 try {
-                    return (T) stream.readUTF();
+                    return stream.readUTF();
                 } catch (final IOException e) {
                     throw new SerializationException(e);
                 }
             } else {
-                return Ceres.getSerializer(type).deserialize(this, type, into);
+                return Ceres.getSerializer(type).deserialize(this, (Class) type, into);
             }
         }
 
         @Override
-        public boolean isNull(final String name) throws SerializationException {
+        public boolean exists(final String name) throws SerializationException {
+            return true; // We do not track names in this serializer, so we must assume we have everything.
+        }
+
+        private boolean isNull() throws SerializationException {
             try {
                 return stream.readBoolean();
             } catch (final IOException e) {

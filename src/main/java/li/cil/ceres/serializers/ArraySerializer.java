@@ -13,11 +13,11 @@ public final class ArraySerializer implements Serializer {
 
     @Override
     public void serialize(final SerializationVisitor visitor, final Class type, final Object value) throws SerializationException {
-        visitor.putArray("value", type, value);
+        visitor.putObject("value", type, value);
     }
 
     @Override
     public Object deserialize(final DeserializationVisitor visitor, final Class type, @Nullable final Object value) throws SerializationException {
-        return visitor.getArray("value", type);
+        return visitor.getObject("value", type, value);
     }
 }

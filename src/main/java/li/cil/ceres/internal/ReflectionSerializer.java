@@ -12,7 +12,6 @@ import java.util.ArrayList;
 final class ReflectionSerializer implements Serializer {
     static final ReflectionSerializer INSTANCE = new ReflectionSerializer();
 
-    @SuppressWarnings("unchecked")
     @Override
     public void serialize(final SerializationVisitor visitor, final Class type, final Object value) throws SerializationException {
         for (final Field field : collectFields(type)) {
@@ -36,22 +35,10 @@ final class ReflectionSerializer implements Serializer {
                     visitor.putDouble(field.getName(), field.getDouble(value));
                 } else {
                     final Object fieldValue = field.get(value);
-                    final boolean isNull = fieldValue == null;
-                    visitor.putNull(field.getName(), isNull);
-                    if (isNull) {
-                        continue;
+                    if (fieldValue != null && fieldValue.getClass() != fieldType) {
+                        throw new SerializationException(String.format("Value type [%s] does not match field type [%s] in field [%s.%s]. Polymorphism is not supported.", value.getClass().getName(), fieldType.getName(), type.getName(), field.getName()));
                     }
-
-                    if (fieldType.isArray()) {
-                        visitor.putArray(field.getName(), fieldType, fieldValue);
-                    } else if (fieldType.isEnum()) {
-                        visitor.putEnum(field.getName(), fieldType, (Enum) fieldValue);
-                    } else {
-                        if (fieldValue.getClass() != fieldType) {
-                            throw new SerializationException(String.format("Value type [%s] does not match field type [%s] in field [%s.%s]. Polymorphism is not supported.", value.getClass().getName(), fieldType.getName(), type.getName(), field.getName()));
-                        }
-                        visitor.putObject(field.getName(), fieldType, fieldValue);
-                    }
+                    visitor.putObject(field.getName(), fieldType, fieldValue);
                 }
             } catch (final Throwable e) {
                 throw new SerializationException(String.format("Failed serializing field [%s.%s]", type.getName(), field.getName()), e);
@@ -79,30 +66,24 @@ final class ReflectionSerializer implements Serializer {
 
         for (final Field field : collectFields(type)) {
             try {
-                final Class fieldType = field.getType();
-                if (fieldType == boolean.class) {
-                    field.setBoolean(value, visitor.getBoolean(field.getName()));
-                } else if (fieldType == byte.class) {
-                    field.setByte(value, visitor.getByte(field.getName()));
-                } else if (fieldType == char.class) {
-                    field.setChar(value, visitor.getChar(field.getName()));
-                } else if (fieldType == short.class) {
-                    field.setShort(value, visitor.getShort(field.getName()));
-                } else if (fieldType == int.class) {
-                    field.setInt(value, visitor.getInt(field.getName()));
-                } else if (fieldType == long.class) {
-                    field.setLong(value, visitor.getLong(field.getName()));
-                } else if (fieldType == float.class) {
-                    field.setFloat(value, visitor.getFloat(field.getName()));
-                } else if (fieldType == double.class) {
-                    field.setDouble(value, visitor.getDouble(field.getName()));
-                } else {
-                    if (visitor.isNull(field.getName())) {
-                        field.set(value, null);
-                    } else if (fieldType.isArray()) {
-                        field.set(value, visitor.getArray(field.getName(), fieldType));
-                    } else if (fieldType.isEnum()) {
-                        field.set(value, visitor.getEnum(field.getName(), fieldType));
+                if (visitor.exists(field.getName())) {
+                    final Class fieldType = field.getType();
+                    if (fieldType == boolean.class) {
+                        field.setBoolean(value, visitor.getBoolean(field.getName()));
+                    } else if (fieldType == byte.class) {
+                        field.setByte(value, visitor.getByte(field.getName()));
+                    } else if (fieldType == char.class) {
+                        field.setChar(value, visitor.getChar(field.getName()));
+                    } else if (fieldType == short.class) {
+                        field.setShort(value, visitor.getShort(field.getName()));
+                    } else if (fieldType == int.class) {
+                        field.setInt(value, visitor.getInt(field.getName()));
+                    } else if (fieldType == long.class) {
+                        field.setLong(value, visitor.getLong(field.getName()));
+                    } else if (fieldType == float.class) {
+                        field.setFloat(value, visitor.getFloat(field.getName()));
+                    } else if (fieldType == double.class) {
+                        field.setDouble(value, visitor.getDouble(field.getName()));
                     } else {
                         field.set(value, visitor.getObject(field.getName(), fieldType, field.get(value)));
                     }

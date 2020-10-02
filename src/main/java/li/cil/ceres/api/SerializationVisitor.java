@@ -1,5 +1,7 @@
 package li.cil.ceres.api;
 
+import javax.annotation.Nullable;
+
 /**
  * Represents an interface for performing serialization of values.
  * <p>
@@ -32,11 +34,5 @@ public interface SerializationVisitor {
 
     void putDouble(final String name, final double value) throws SerializationException;
 
-    void putArray(final String name, final Class<?> type, final Object value) throws SerializationException;
-
-    void putEnum(final String name, final Class<Enum<?>> type, final Enum<?> value) throws SerializationException;
-
-    void putObject(final String name, final Class<?> type, final Object value) throws SerializationException;
-
-    void putNull(final String name, final boolean isNull) throws SerializationException;
+    void putObject(final String name, final Class<?> type, @Nullable final Object value) throws SerializationException;
 }
