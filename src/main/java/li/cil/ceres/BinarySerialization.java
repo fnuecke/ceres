@@ -489,7 +489,7 @@ public final class BinarySerialization {
                         if (stream.read(bytes) != bytes.length) {
                             throw new SerializationException("Failed reading object array item data.");
                         }
-                        data[i] = serializer.deserialize(new Deserializer(new DataInputStream(new ByteArrayInputStream(bytes))), (Class) componentType, null);
+                        data[i] = serializer.deserialize(new Deserializer(new DataInputStream(new ByteArrayInputStream(bytes))), (Class) componentType, data[i]);
                     }
                     return data;
                 } catch (final IOException e) {
