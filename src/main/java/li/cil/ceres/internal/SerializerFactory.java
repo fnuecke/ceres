@@ -13,8 +13,4 @@ public final class SerializerFactory {
             return ReflectionSerializer.generateSerializer(type);
         }
     }
-
-    public static <T> boolean isSuperclassSerializer(final Serializer<T> serializer) {
-        return serializer == SuperclassSerializer.INSTANCE;
-    }
 }

@@ -3,6 +3,7 @@ package li.cil.ceres.internal;
 import li.cil.ceres.Ceres;
 import li.cil.ceres.api.SerializationException;
 import li.cil.ceres.api.Serialized;
+import li.cil.ceres.api.Serializer;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -17,6 +18,11 @@ final class SerializerUtils {
         final boolean serializeFields = type.isAnnotationPresent(Serialized.class);
         final ArrayList<Field> fields = new ArrayList<>();
         for (final Field field : type.getDeclaredFields()) {
+            // We do not serialize synthetic fields (e.g. reference to parent class for non-static inner classes).
+            if (field.isSynthetic()) {
+                continue;
+            }
+
             // We do not serialize static fields.
             if (Modifier.isStatic(field.getModifiers())) {
                 if (field.isAnnotationPresent(Serialized.class)) {
@@ -55,7 +61,11 @@ final class SerializerUtils {
         if (type.isPrimitive()) return true; // Primitives are immutable by definition.
         if (type.isEnum()) return true; // Enum values are immutable by definition.
         if (type.isArray()) return false; // Arrays are mutable by definition.
-        if (Ceres.hasSerializer(type)) return false; // If we have a serializer we can serialize into this type.
+
+        final Serializer<?> serializer = Ceres.getSerializer(type, false);
+        if (serializer != null && (!(serializer instanceof GeneratedSerializer) || ((GeneratedSerializer) serializer).hasSerializedFields()))
+            return false; // If we have a serializer we can serialize into this type.
+
         return !hasSerializableFields(type, seenTypes);
     }
 

@@ -1,5 +1,6 @@
 package li.cil.ceres.internal;
 
+import li.cil.ceres.Ceres;
 import li.cil.ceres.api.DeserializationVisitor;
 import li.cil.ceres.api.SerializationException;
 import li.cil.ceres.api.SerializationVisitor;
@@ -40,10 +41,6 @@ final class CompiledSerializer {
         }
 
         final ArrayList<Field> fields = SerializerUtils.collectSerializableFields(type);
-        if (fields.isEmpty()) {
-            return SuperclassSerializer.INSTANCE;
-        }
-
         final String className = Type.getInternalName(type) + "$" + Type.getInternalName(Serializer.class);
 
         // Generate signature for `implements Serializer<type>`
@@ -65,7 +62,8 @@ final class CompiledSerializer {
                 classSignature.toString(),
                 Type.getInternalName(Object.class),
                 new String[]{
-                        Type.getInternalName(Serializer.class)
+                        Type.getInternalName(Serializer.class),
+                        Type.getInternalName(GeneratedSerializer.class)
                 });
 
         // Constructor
@@ -79,7 +77,21 @@ final class CompiledSerializer {
         init.visitMaxs(-1, -1);
         init.visitEnd();
 
-        // Serialize
+        // hasSerializedFields()
+        final MethodVisitor hasSerializedFields = cw.visitMethod(Opcodes.ACC_PUBLIC + Opcodes.ACC_FINAL, "hasSerializedFields", Type.getMethodDescriptor(Type.BOOLEAN_TYPE), null, null);
+        hasSerializedFields.visitCode();
+        {
+            if (fields.isEmpty()) {
+                hasSerializedFields.visitLdcInsn(false);
+            } else {
+                hasSerializedFields.visitLdcInsn(true);
+            }
+            hasSerializedFields.visitInsn(Opcodes.IRETURN);
+        }
+        hasSerializedFields.visitMaxs(-1, -1);
+        hasSerializedFields.visitEnd();
+
+        // serialize()
         final MethodVisitor serialize = cw.visitMethod(Opcodes.ACC_PUBLIC + Opcodes.ACC_FINAL, "serialize", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(SerializationVisitor.class), Type.getType(Class.class), Type.getType(Object.class)), null, new String[]{
                 Type.getInternalName(SerializationException.class)
         });
@@ -90,7 +102,7 @@ final class CompiledSerializer {
         serialize.visitMaxs(-1, -1);
         serialize.visitEnd();
 
-        // Deserialize
+        // deserialize()
         final MethodVisitor deserialize = cw.visitMethod(Opcodes.ACC_PUBLIC + Opcodes.ACC_FINAL, "deserialize", Type.getMethodDescriptor(Type.getType(Object.class), Type.getType(DeserializationVisitor.class), Type.getType(Class.class), Type.getType(Object.class)), null, new String[]{
                 Type.getInternalName(SerializationException.class)
         });
@@ -139,7 +151,7 @@ final class CompiledSerializer {
                 generateSerializePrimitiveCall(mv, type, field, fieldType, "putDouble");
             } else {
                 final Label fieldValueValidLabel = new Label();
-                final Label nothrowLabel = new Label(), endifLabel = new Label();
+                final Label nothrowLabel = new Label(), throwDedupLabel = new Label(), throwLabel = new Label(), endifLabel = new Label();
 
                 mv.visitLocalVariable("fieldValue" + fieldValueCount++, Type.getDescriptor(fieldType), null, fieldValueValidLabel, endifLabel, SERIALIZER_FIELD_VALUE_INDEX);
 
@@ -159,13 +171,30 @@ final class CompiledSerializer {
                 mv.visitLdcInsn(Type.getType(fieldType));
                 mv.visitJumpInsn(Opcodes.IF_ACMPEQ, nothrowLabel);
                 {
+                    // serializer = Ceres.getSerializer(fieldType, false);
+                    mv.visitLdcInsn(Type.getType(fieldType));
+                    mv.visitLdcInsn(false);
+                    mv.visitMethodInsn(Opcodes.INVOKESTATIC, Type.getInternalName(Ceres.class),
+                            "getSerializer", "(Ljava/lang/Class;Z)Lli/cil/ceres/api/Serializer;", false);
+                    mv.visitInsn(Opcodes.DUP);
+                    // if (serializer != null &&
+                    mv.visitJumpInsn(Opcodes.IFNULL, throwDedupLabel);
+                    //     !(serializer instanceof GeneratedSerializer)) goto nothrowLabel
+                    mv.visitTypeInsn(Opcodes.INSTANCEOF, Type.getInternalName(GeneratedSerializer.class));
+                    mv.visitJumpInsn(Opcodes.IFEQ, nothrowLabel); // IFEQ=if equal zero=if false
+                    mv.visitJumpInsn(Opcodes.GOTO, throwLabel);
+
+                    mv.visitLabel(throwDedupLabel);
+                    mv.visitInsn(Opcodes.POP);
+                    mv.visitLabel(throwLabel);
+
                     // throw new SerializationException(message, value.getClass().getName(), fieldType.getName(), type.getName(), field.getName()));
                     mv.visitTypeInsn(Opcodes.NEW, Type.getInternalName(SerializationException.class)); // [e]
                     mv.visitInsn(Opcodes.DUP); // [e, e]
 
                     // message = String.format(fmt, args)
                     {
-                        mv.visitLdcInsn("Value type [%s] does not match field type [%s] in field [%s.%s]. Polymorphism is not supported."); // [e, e, fmt]
+                        mv.visitLdcInsn("Value type [%s] does not match field type in field [%s.%s] and no explicit serializer has been registered for field type [%s]. Polymorphism is not supported when using generated serializers."); // [e, e, fmt]
 
                         // args = new Object[4];
                         mv.visitLdcInsn(4); // [e, e, fmt, len]
@@ -181,23 +210,23 @@ final class CompiledSerializer {
                                 "getName", "()Ljava/lang/String;", false); // [..., {}, {}, 0, fieldValueTypeName]
                         mv.visitInsn(Opcodes.AASTORE); // [..., {fieldValueTypeName}]
 
-                        // args[1] = fieldType.getName();
-                        mv.visitInsn(Opcodes.DUP); // [..., {}, {}]
-                        mv.visitLdcInsn(1); // [..., {}, {}, 1]
-                        mv.visitLdcInsn(fieldType.getName()); // [..., {}, {}, 1, fieldTypeName]
-                        mv.visitInsn(Opcodes.AASTORE); // [..., {fieldValueTypeName, fieldTypeName}]
-
-                        // args[2] = type.getName();
+                        // args[1] = type.getName();
                         mv.visitInsn(Opcodes.DUP); // [..., {}, {}]
                         mv.visitLdcInsn(1); // [..., {}, {}, 2]
                         mv.visitLdcInsn(type.getName()); // [..., {}, {}, 1, typeName]
                         mv.visitInsn(Opcodes.AASTORE); // [..., {fieldValueTypeName, fieldTypeName, typeName}]
 
-                        // args[3] = field.getName();
+                        // args[2] = field.getName();
                         mv.visitInsn(Opcodes.DUP); // [..., {}, {}]
-                        mv.visitLdcInsn(1); // [..., {}, {}, 3]
+                        mv.visitLdcInsn(2); // [..., {}, {}, 3]
                         mv.visitLdcInsn(field.getName()); // [..., {}, {}, 1, fieldName]
                         mv.visitInsn(Opcodes.AASTORE); // [..., {fieldValueTypeName, fieldTypeName, typeName, fieldName}]
+
+                        // args[3] = fieldType.getName();
+                        mv.visitInsn(Opcodes.DUP); // [..., {}, {}]
+                        mv.visitLdcInsn(3); // [..., {}, {}, 1]
+                        mv.visitLdcInsn(fieldType.getName()); // [..., {}, {}, 1, fieldTypeName]
+                        mv.visitInsn(Opcodes.AASTORE); // [..., {fieldValueTypeName, fieldTypeName}]
 
                         mv.visitMethodInsn(Opcodes.INVOKESTATIC, Type.getInternalName(String.class),
                                 "format", "(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/String;", false); // [e, e, message]

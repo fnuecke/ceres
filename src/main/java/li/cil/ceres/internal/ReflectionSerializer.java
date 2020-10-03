@@ -1,5 +1,6 @@
 package li.cil.ceres.internal;
 
+import li.cil.ceres.Ceres;
 import li.cil.ceres.api.DeserializationVisitor;
 import li.cil.ceres.api.SerializationException;
 import li.cil.ceres.api.SerializationVisitor;
@@ -12,7 +13,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 
 @SuppressWarnings("rawtypes")
-final class ReflectionSerializer implements Serializer {
+final class ReflectionSerializer implements Serializer, GeneratedSerializer {
     private final ArrayList<Field> fields;
 
     @SuppressWarnings("unchecked")
@@ -22,10 +23,6 @@ final class ReflectionSerializer implements Serializer {
         }
 
         final ArrayList<Field> fields = SerializerUtils.collectSerializableFields(type);
-        if (fields.isEmpty()) {
-            return SuperclassSerializer.INSTANCE;
-        }
-
         for (final Field field : fields) {
             field.setAccessible(true);
         }
@@ -37,6 +34,12 @@ final class ReflectionSerializer implements Serializer {
         this.fields = fields;
     }
 
+    @Override
+    public boolean hasSerializedFields() {
+        return !fields.isEmpty();
+    }
+
+    @SuppressWarnings("unchecked")
     @Override
     public void serialize(final SerializationVisitor visitor, final Class type, final Object value) throws SerializationException {
         for (final Field field : fields) {
@@ -61,7 +64,10 @@ final class ReflectionSerializer implements Serializer {
                 } else {
                     final Object fieldValue = field.get(value);
                     if (fieldValue != null && fieldValue.getClass() != fieldType) {
-                        throw new SerializationException(String.format("Value type [%s] does not match field type [%s] in field [%s.%s]. Polymorphism is not supported.", value.getClass().getName(), fieldType.getName(), type.getName(), field.getName()));
+                        final Serializer serializer = Ceres.getSerializer(fieldType, false);
+                        if (serializer == null || serializer instanceof GeneratedSerializer) {
+                            throw new SerializationException(String.format("Value type [%s] does not match field type in field [%s.%s] and no explicit serializer has been registered for field type [%s]. Polymorphism is not supported when using generated serializers.", value.getClass().getName(), type.getName(), field.getName(), fieldType.getName()));
+                        }
                     }
                     visitor.putObject(field.getName(), fieldType, fieldValue);
                 }

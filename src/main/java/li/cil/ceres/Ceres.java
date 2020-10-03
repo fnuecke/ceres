@@ -7,6 +7,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.reflections.Reflections;
 
+import javax.annotation.Nullable;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -22,7 +23,12 @@ import java.util.Map;
  *     <li>Allow serialization of types from external code: {@link Serializer}.</li>
  *     <li>Make serialization of own code quick and easy: {@link Serialized}.</li>
  *     <li>Exchangeable serialization backends: {@link SerializationVisitor}, {@link DeserializationVisitor}.</li>
- *     <li>Easy to reason about: no aliasing support, no polymorphism support.</li>
+ * </ul>
+ * Its main limitations are:
+ * <ul>
+ *     <li>No aliasing support.</li>
+ *     <li>No explicit polymorphism support<sup>1)</sup>.</li>
+ *     <li>Generated serializers cannot access private inner types.</li>
  * </ul>
  * <p>
  * To add support for types a {@link Serializer} for that type must be implemented and registered by
@@ -35,6 +41,12 @@ import java.util.Map;
  * <p>
  * Using Ceres requires an implementation of a {@link SerializationVisitor} and a {@link DeserializationVisitor}.
  * Ceres comes with an implementation serializing to a binary format accessible via {@link BinarySerialization}.
+ * <p>
+ * <sup>1)</sup> Ceres does not inherently support polymorphic fields. The serializer chosen for such fields
+ * will depend on the field's type, not the value currently assigned to that field. As such, it is required
+ * that an explicit serializer for the field type is registered for cases where value type does not match the
+ * field type. Such serializers will need to function for all subtypes of their type or write the full type
+ * of the serialized value to know the type the serialized data applies to during deserialization.
  */
 public final class Ceres {
     private static final Logger LOGGER = LogManager.getLogger();
@@ -81,8 +93,26 @@ public final class Ceres {
      * @return a {@link Serializer} for the specified type.
      * @throws SerializationException if an exception is raised while generating a serializer.
      */
-    @SuppressWarnings("unchecked")
     public static <T> Serializer<T> getSerializer(final Class<T> type) throws SerializationException {
+        return getSerializer(type, true);
+    }
+
+    /**
+     * Returns a serializer for the specified type.
+     * <p>
+     * If no serializer for this type has been assigned using {@link #putSerializer(Class, Serializer)}
+     * and {@code generateMissing} is {@code true} a serializer will be generated. A generated serializer
+     * will operate on fields marked with the {@link Serialized} annotation, either directly or by
+     * annotating the class itself. If {@code generateMissing} is {@code false}, {@code null} will be
+     * returned.
+     *
+     * @param type the type to get a serializer for.
+     * @return a {@link Serializer} for the specified type.
+     * @throws SerializationException if an exception is raised while generating a serializer.
+     */
+    @SuppressWarnings("unchecked")
+    @Nullable
+    public static <T> Serializer<T> getSerializer(final Class<T> type, final boolean generateMissing) throws SerializationException {
         synchronized (SERIALIZERS) {
             if (SERIALIZERS.containsKey(type)) {
                 return (Serializer<T>) SERIALIZERS.get(type);
@@ -95,35 +125,34 @@ public final class Ceres {
                 return ArraySerializer.INSTANCE;
             }
 
-            final Serializer<T> serializer = SerializerFactory.generateSerializer(type);
-            SERIALIZERS.put(type, serializer);
-            return serializer;
+            if (generateMissing) {
+                final Serializer<T> serializer = SerializerFactory.generateSerializer(type);
+                SERIALIZERS.put(type, serializer);
+                return serializer;
+            }
         }
-    }
 
-    /**
-     * Checks if a serializer for the specified type exists without creating one if it does not.
-     *
-     * @param type the type to check for.
-     * @return {@code true} if a serializer for this type is known; {@code false} otherwise.
-     */
-    public static <T> boolean hasSerializer(final Class<T> type) {
-        synchronized (SERIALIZERS) {
-            return SERIALIZERS.containsKey(type) && !SerializerFactory.isSuperclassSerializer(SERIALIZERS.get(type));
-        }
+        return null;
     }
 
     /**
      * Assigns a serializer to the specified type.
      * <p>
      * If a serializer had been previously assigned to the type it will be replaced.
+     * <p>
+     * Passing {@code null} as the {@code serializer} value will remove the current serializer for
+     * the specified {@code type}. This is mainly intended to be used when writing unit tests.
      *
      * @param type       the type the serializer operates on.
      * @param serializer the serializer to assign to {@code type}.
      */
-    public static <T> void putSerializer(final Class<T> type, final Serializer<T> serializer) {
+    public static <T> void putSerializer(final Class<T> type, @Nullable final Serializer<T> serializer) {
         synchronized (SERIALIZERS) {
-            SERIALIZERS.put(type, serializer);
+            if (serializer != null) {
+                SERIALIZERS.put(type, serializer);
+            } else {
+                SERIALIZERS.remove(type);
+            }
         }
     }
 }

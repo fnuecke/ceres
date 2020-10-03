@@ -1,6 +1,7 @@
 package li.cil.ceres;
 
 import li.cil.ceres.api.*;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -10,6 +11,11 @@ import java.util.Objects;
 import java.util.UUID;
 
 public final class SerializationTests {
+    @AfterEach
+    public void unregisterTestSerializers() {
+        Ceres.putSerializer(PolymorphicFieldType.class, null);
+    }
+
     @Test
     public void testFlat() {
         final Flat value = new Flat();
@@ -212,6 +218,41 @@ public final class SerializationTests {
         Assertions.assertThrows(SerializationException.class, () -> BinarySerialization.serialize(value));
     }
 
+    @Test
+    public void testPolymorphicFieldNoSerializer() {
+        final PolymorphicFieldHolder value = new PolymorphicFieldHolder();
+
+        // Serializing null does not throw because no serializer is looked up.
+        Assertions.assertDoesNotThrow(() -> BinarySerialization.serialize(value));
+
+        value.value = new PolymorphicFieldClassMul2();
+        Assertions.assertThrows(SerializationException.class, () -> BinarySerialization.serialize(value));
+
+        value.value = new PolymorphicFieldClassAdd1();
+        Assertions.assertThrows(SerializationException.class, () -> BinarySerialization.serialize(value));
+    }
+
+    @Test
+    public void testPolymorphicFieldYesSerializer() {
+        Ceres.putSerializer(PolymorphicFieldType.class, PolymorphicFieldTypeSerializer.INSTANCE);
+
+        final PolymorphicFieldHolder value = new PolymorphicFieldHolder();
+
+        value.value = new PolymorphicFieldClassAdd1();
+        value.value.x = 2;
+
+        final ByteBuffer serialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.serialize(value));
+
+        // New instance of polymorphic field value.
+        PolymorphicFieldHolder deserialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, PolymorphicFieldHolder.class, null));
+        Assertions.assertEquals(PolymorphicFieldClassAdd1.class, deserialized.value.getClass());
+
+        // New instance of polymorphic field value in existing owner instance.
+        value.value = new PolymorphicFieldClassMul2();
+        deserialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, PolymorphicFieldHolder.class, value));
+        Assertions.assertEquals(PolymorphicFieldClassAdd1.class, deserialized.value.getClass());
+    }
+
     @Serialized
     public static final class Flat {
         private byte byteValue;
@@ -377,5 +418,59 @@ public final class SerializationTests {
 
     public static final class ImmutableIndirectRoot {
         @Serialized public final ImmutableIndirectMid v = null;
+    }
+
+    public static abstract class PolymorphicFieldType {
+        @Serialized public int x;
+
+        public abstract int f();
+    }
+
+    public static final class PolymorphicFieldClassMul2 extends PolymorphicFieldType {
+        @Override
+        public int f() {
+            return x * 2;
+        }
+    }
+
+    public static final class PolymorphicFieldClassAdd1 extends PolymorphicFieldType {
+        @Override
+        public int f() {
+            return x + 1;
+        }
+    }
+
+    public static final class PolymorphicFieldHolder {
+        @Serialized public PolymorphicFieldType value;
+    }
+
+    static final class PolymorphicFieldTypeSerializer implements Serializer<PolymorphicFieldType> {
+        static final PolymorphicFieldTypeSerializer INSTANCE = new PolymorphicFieldTypeSerializer();
+
+        @Override
+        public void serialize(final SerializationVisitor visitor, final Class<PolymorphicFieldType> type, final Object value) throws SerializationException {
+            visitor.putBoolean("type", value instanceof PolymorphicFieldClassMul2);
+            visitor.putInt("x", ((PolymorphicFieldType) value).x);
+        }
+
+        @Override
+        public PolymorphicFieldType deserialize(final DeserializationVisitor visitor, final Class<PolymorphicFieldType> type, final Object value) throws SerializationException {
+            final Class<?> polyType = visitor.getBoolean("type") ? PolymorphicFieldClassMul2.class : PolymorphicFieldClassAdd1.class;
+            final int x = visitor.getInt("x");
+            if (polyType == type) {
+                ((PolymorphicFieldType) value).x = x;
+                return (PolymorphicFieldType) value;
+            } else {
+                if (polyType == PolymorphicFieldClassMul2.class) {
+                    final PolymorphicFieldClassMul2 inst = new PolymorphicFieldClassMul2();
+                    inst.x = x;
+                    return inst;
+                } else {
+                    final PolymorphicFieldClassAdd1 inst = new PolymorphicFieldClassAdd1();
+                    inst.x = x;
+                    return inst;
+                }
+            }
+        }
     }
 }
