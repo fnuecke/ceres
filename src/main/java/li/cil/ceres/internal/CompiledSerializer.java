@@ -35,10 +35,8 @@ final class CompiledSerializer {
 
     @SuppressWarnings("unchecked")
     public static <T> Serializer<T> generateSerializer(final Class<T> type) throws SerializationException {
-        try {
-            type.getDeclaredConstructor();
-        } catch (final NoSuchMethodException e) {
-            throw new SerializationException(String.format("Cannot generate serializer for type without default constructor [%s].", type));
+        if (type.isInterface()) {
+            throw new SerializationException(String.format("Cannot generate serializer for interface [%s].", type));
         }
 
         final ArrayList<Field> fields = SerializerUtils.collectSerializableFields(type);
@@ -245,11 +243,36 @@ final class CompiledSerializer {
         // if (value == null)
         mv.visitJumpInsn(Opcodes.IFNONNULL, nonnullLabel);
         {
-            // value = new type();
-            mv.visitTypeInsn(Opcodes.NEW, Type.getInternalName(type));
-            mv.visitInsn(Opcodes.DUP);
-            mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Type.getInternalName(type), "<init>", "()V", false);
-            mv.visitVarInsn(Opcodes.ASTORE, DESERIALIZER_VALUE_INDEX);
+            if (Modifier.isAbstract(type.getModifiers())) {
+                // throw new SerializationException(String.format("Cannot create new instance of abstract type [%s].", type));
+                mv.visitTypeInsn(Opcodes.NEW, Type.getInternalName(SerializationException.class));
+                mv.visitInsn(Opcodes.DUP);
+                mv.visitLdcInsn(String.format("Cannot create new instance of abstract type [%s].", type));
+                mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Type.getInternalName(SerializationException.class), "<init>", "(Ljava/lang/String;)V", false);
+                mv.visitInsn(Opcodes.ATHROW);
+            } else {
+                boolean hasDefaultConstructor = false;
+                try {
+                    type.getDeclaredConstructor();
+                    hasDefaultConstructor = true;
+                } catch (final NoSuchMethodException ignored) {
+                }
+
+                if (!hasDefaultConstructor) {
+                    // throw new SerializationException(String.format("Cannot create new instance of type without a default constructor [%s].", type));
+                    mv.visitTypeInsn(Opcodes.NEW, Type.getInternalName(SerializationException.class));
+                    mv.visitInsn(Opcodes.DUP);
+                    mv.visitLdcInsn(String.format("Cannot create new instance of type without a default constructor [%s].", type));
+                    mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Type.getInternalName(SerializationException.class), "<init>", "(Ljava/lang/String;)V", false);
+                    mv.visitInsn(Opcodes.ATHROW);
+                } else {
+                    // value = new type();
+                    mv.visitTypeInsn(Opcodes.NEW, Type.getInternalName(type));
+                    mv.visitInsn(Opcodes.DUP);
+                    mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Type.getInternalName(type), "<init>", "()V", false);
+                    mv.visitVarInsn(Opcodes.ASTORE, DESERIALIZER_VALUE_INDEX);
+                }
+            }
         }
         mv.visitLabel(nonnullLabel);
 

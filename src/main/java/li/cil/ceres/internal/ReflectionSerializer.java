@@ -17,10 +17,8 @@ final class ReflectionSerializer implements Serializer {
 
     @SuppressWarnings("unchecked")
     public static <T> Serializer<T> generateSerializer(final Class<T> type) throws SerializationException {
-        try {
-            type.getDeclaredConstructor();
-        } catch (final NoSuchMethodException e) {
-            throw new SerializationException(String.format("Cannot generate serializer for type without default constructor [%s].", type));
+        if (type.isInterface()) {
+            throw new SerializationException(String.format("Cannot generate serializer for interface [%s].", type));
         }
 
         final ArrayList<Field> fields = SerializerUtils.collectSerializableFields(type);
@@ -82,12 +80,18 @@ final class ReflectionSerializer implements Serializer {
     @Override
     public Object deserialize(final DeserializationVisitor visitor, final Class type, @Nullable Object value) throws SerializationException {
         if (value == null) {
-            try {
-                final Constructor constructor = type.getDeclaredConstructor();
-                constructor.setAccessible(true);
-                value = constructor.newInstance();
-            } catch (final Throwable e) {
-                throw new SerializationException(String.format("Failed instantiating type [%s]", type.getName()), e);
+            if (Modifier.isAbstract(type.getModifiers())) {
+                throw new SerializationException(String.format("Cannot create new instance of abstract type [%s].", type));
+            } else {
+                try {
+                    final Constructor constructor = type.getDeclaredConstructor();
+                    constructor.setAccessible(true);
+                    value = constructor.newInstance();
+                } catch (final NoSuchMethodException e) {
+                    throw new SerializationException(String.format("Cannot create new instance of type without a default constructor [%s].", type));
+                } catch (final Throwable e) {
+                    throw new SerializationException(String.format("Failed instantiating type [%s]", type.getName()), e);
+                }
             }
         }
 
