@@ -18,8 +18,13 @@ public final class UUIDSerializer implements Serializer<UUID> {
 
     @Override
     public UUID deserialize(final DeserializationVisitor visitor, final Class<UUID> type, @Nullable final Object value) throws SerializationException {
+        if (!visitor.exists("msb") || !visitor.exists("lsb")) {
+            return (UUID) value;
+        }
+
         final long msb = visitor.getLong("msb");
         final long lsb = visitor.getLong("lsb");
+
         return new UUID(msb, lsb);
     }
 }

@@ -10,31 +10,45 @@ import java.io.*;
 import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 
-public final class DataStreamSerialization {
-    private static final int OBJECT_ARRAY_NULL_VALUE = -1;
-
-    public static void serialize(final DataOutputStream stream, final Object value) throws SerializationException {
-        Ceres.getSerializer(value.getClass()).serialize(new Serializer(stream), value);
+/**
+ * Provides binary serialization to and from {@link DataOutputStream}s/{@link DataInputStream}s and {@link ByteBuffer}s.
+ * <p>
+ * The {@link SerializationVisitor} and {@link DeserializationVisitor} implemented by this serialization format write
+ * a minimal amount of data. In particular, no names are stored, and as such there is no way of knowing if a value to
+ * be read exists in the serialized data. As such, this format is not suitable for use-cases where the data structures
+ * that are serialized may change over time, as this will make the serialized data unreadable: the data structures
+ * define the structure of the serialized data.
+ */
+public final class BinarySerialization {
+    public static <T> void serialize(final DataOutputStream stream, final T value) throws SerializationException {
+        @SuppressWarnings("unchecked") final Class<T> type = (Class<T>) value.getClass();
+        Ceres.getSerializer(type).serialize(new Serializer(stream), type, value);
     }
 
-    @SuppressWarnings("unchecked")
-    public static <T> T deserialize(final DataInputStream stream, final T into) throws SerializationException {
-        return deserialize(stream, (Class<T>) into.getClass(), into);
+    public static <T> ByteBuffer serialize(final T value) throws SerializationException {
+        final ByteArrayOutputStream data = new ByteArrayOutputStream();
+        serialize(new DataOutputStream(data), value);
+        return ByteBuffer.wrap(data.toByteArray());
     }
 
     public static <T> T deserialize(final DataInputStream stream, final Class<T> type, @Nullable final T into) throws SerializationException {
         return Ceres.getSerializer(type).deserialize(new Deserializer(stream), type, into);
     }
 
-    public static ByteBuffer serialize(final Object value) throws SerializationException {
-        final ByteArrayOutputStream data = new ByteArrayOutputStream();
-        serialize(new DataOutputStream(data), value);
-        return ByteBuffer.wrap(data.toByteArray());
+    public static <T> T deserialize(final DataInputStream stream, final T into) throws SerializationException {
+        @SuppressWarnings("unchecked") final Class<T> type = (Class<T>) into.getClass();
+        return deserialize(stream, type, into);
     }
 
     public static <T> T deserialize(final ByteBuffer data, final Class<T> type, @Nullable final T into) throws SerializationException {
         return deserialize(new DataInputStream(new ByteArrayInputStream(data.array())), type, into);
     }
+
+    public static <T> T deserialize(final ByteBuffer data, final T into) throws SerializationException {
+        return deserialize(new DataInputStream(new ByteArrayInputStream(data.array())), into);
+    }
+
+    private static final int OBJECT_ARRAY_NULL_VALUE = -1;
 
     private static final class Serializer implements SerializationVisitor {
         private final DataOutputStream stream;
@@ -214,7 +228,7 @@ public final class DataStreamSerialization {
                             continue;
                         }
                         if (datum.getClass() != componentType) {
-                            throw new SerializationException(String.format("Polymorphism detected in generic array [%s]. This is not supported.", name));
+                            throw new SerializationException(String.format("Polymorphism detected in object array [%s]. This is not supported.", name));
                         }
                         serializer.serialize(new Serializer(componentStream), (Class) componentType, datum);
                         stream.writeInt(componentData.size());
@@ -472,8 +486,9 @@ public final class DataStreamSerialization {
                             continue;
                         }
                         final byte[] bytes = new byte[componentLength];
-                        //noinspection ResultOfMethodCallIgnored
-                        stream.read(bytes);
+                        if (stream.read(bytes) != bytes.length) {
+                            throw new SerializationException("Failed reading object array item data.");
+                        }
                         data[i] = serializer.deserialize(new Deserializer(new DataInputStream(new ByteArrayInputStream(bytes))), (Class) componentType, null);
                     }
                     return data;
@@ -491,11 +506,6 @@ public final class DataStreamSerialization {
             } else {
                 return Ceres.getSerializer(type).deserialize(this, (Class) type, into);
             }
-        }
-
-        @Override
-        public boolean exists(final String name) throws SerializationException {
-            return true; // We do not track names in this serializer, so we must assume we have everything.
         }
 
         private boolean isNull() throws SerializationException {
