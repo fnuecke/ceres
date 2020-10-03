@@ -341,16 +341,6 @@ final class CompiledSerializer {
         mv.visitInsn(Opcodes.ARETURN);
     }
 
-    private static <T> void generateDeserializeObjectCall(final MethodVisitor mv, final Class<T> type, final Field field, final Class<?> fieldType) {
-        mv.visitVarInsn(Opcodes.ALOAD, DESERIALIZER_VISITOR_INDEX);
-        mv.visitLdcInsn(field.getName());
-        mv.visitLdcInsn(Type.getType(fieldType));
-        mv.visitVarInsn(Opcodes.ALOAD, DESERIALIZER_VALUE_INDEX);
-        mv.visitFieldInsn(Opcodes.GETFIELD, Type.getInternalName(type), field.getName(), Type.getDescriptor(fieldType));
-        mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(DeserializationVisitor.class),
-                "getObject", "(Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Object;)Ljava/lang/Object;", true);
-    }
-
     private static <T> void generateSerializePrimitiveCall(final MethodVisitor mv, final Class<T> type, final Field field, final Class<?> fieldType, final String name) {
         mv.visitVarInsn(Opcodes.ALOAD, SERIALIZER_VISITOR_INDEX);
         mv.visitLdcInsn(field.getName());
@@ -366,5 +356,15 @@ final class CompiledSerializer {
         mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(DeserializationVisitor.class),
                 name, Type.getMethodDescriptor(Type.getType(fieldType), Type.getType(String.class)), true);
         mv.visitFieldInsn(Opcodes.PUTFIELD, Type.getInternalName(type), field.getName(), Type.getDescriptor(fieldType));
+    }
+
+    private static <T> void generateDeserializeObjectCall(final MethodVisitor mv, final Class<T> type, final Field field, final Class<?> fieldType) {
+        mv.visitVarInsn(Opcodes.ALOAD, DESERIALIZER_VISITOR_INDEX);
+        mv.visitLdcInsn(field.getName());
+        mv.visitLdcInsn(Type.getType(fieldType));
+        mv.visitVarInsn(Opcodes.ALOAD, DESERIALIZER_VALUE_INDEX);
+        mv.visitFieldInsn(Opcodes.GETFIELD, Type.getInternalName(type), field.getName(), Type.getDescriptor(fieldType));
+        mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(DeserializationVisitor.class),
+                "getObject", "(Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Object;)Ljava/lang/Object;", true);
     }
 }
