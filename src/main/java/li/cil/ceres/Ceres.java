@@ -28,9 +28,10 @@ import java.util.Map;
  * To add support for types a {@link Serializer} for that type must be implemented and registered by
  * either calling {@link #putSerializer(Class, Serializer)} or annotating it with {@link RegisterSerializer}.
  * <p>
- * Adding support for own types can be eased by marking fields to be serialized with the {@link Serialized}
- * annotation and providing a default constructor. This will allow automatic generation of a serializer for
- * those types.
+ * Adding support for own types can be eased by marking fields to be serialized with the {@link Serialized}.
+ * This will allow automatic generation of a serializer for those types. <em>Important</em>: if a type does
+ * not have a default constructor, deserializing this type into fields not already holding a value the
+ * type can be deserialized into, an exception will be thrown during deserialization.
  * <p>
  * Using Ceres requires an implementation of a {@link SerializationVisitor} and a {@link DeserializationVisitor}.
  * Ceres comes with an implementation serializing to a binary format accessible via {@link BinarySerialization}.
