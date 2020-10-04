@@ -35,6 +35,10 @@ public final class BinarySerialization {
         return Ceres.getSerializer(type).deserialize(new Deserializer(stream), type, into);
     }
 
+    public static <T> T deserialize(final DataInputStream stream, final Class<T> type) throws SerializationException {
+        return deserialize(stream, type, null);
+    }
+
     public static <T> T deserialize(final DataInputStream stream, final T into) throws SerializationException {
         @SuppressWarnings("unchecked") final Class<T> type = (Class<T>) into.getClass();
         return deserialize(stream, type, into);
@@ -42,6 +46,10 @@ public final class BinarySerialization {
 
     public static <T> T deserialize(final ByteBuffer data, final Class<T> type, @Nullable final T into) throws SerializationException {
         return deserialize(new DataInputStream(new ByteArrayInputStream(data.array())), type, into);
+    }
+
+    public static <T> T deserialize(final ByteBuffer data, final Class<T> type) throws SerializationException {
+        return deserialize(new DataInputStream(new ByteArrayInputStream(data.array())), type, null);
     }
 
     public static <T> T deserialize(final ByteBuffer data, final T into) throws SerializationException {
