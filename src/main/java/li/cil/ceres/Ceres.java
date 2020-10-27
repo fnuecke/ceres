@@ -50,12 +50,22 @@ import java.util.Map;
  */
 public final class Ceres {
     private static final Logger LOGGER = LogManager.getLogger();
-    private static final String SERIALIZER_PACKAGE_LOOKUP_PREFIX = System.getProperty("li.cil.ceres.searchedPackagesPrefix", "li.cil");
 
     private static final Map<Class<?>, Serializer<?>> SERIALIZERS = new HashMap<>();
+    private static boolean isInitialized = false;
 
     static {
-        for (final Class<?> type : new Reflections(SERIALIZER_PACKAGE_LOOKUP_PREFIX).getSubTypesOf(Serializer.class)) {
+        initialize();
+    }
+
+    public static void initialize() {
+        if (isInitialized) {
+            return;
+        }
+
+        isInitialized = true;
+
+        for (final Class<?> type : new Reflections().getSubTypesOf(Serializer.class)) {
             if (!type.isAnnotationPresent(RegisterSerializer.class)) {
                 continue;
             }
