@@ -2,13 +2,14 @@ package li.cil.ceres;
 
 import li.cil.ceres.api.*;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public final class SerializationTests {
     @AfterEach
@@ -33,35 +34,35 @@ public final class SerializationTests {
         value.stringValue = "test string";
         value.uuidValue = uuid;
 
-        final ByteBuffer serialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.serialize(value));
+        final ByteBuffer serialized = assertDoesNotThrow(() -> BinarySerialization.serialize(value));
 
-        Flat deserialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, Flat.class, new Flat()));
+        Flat deserialized = assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, Flat.class, new Flat()));
 
-        Assertions.assertEquals(value.byteValue, deserialized.byteValue);
-        Assertions.assertEquals(value.shortValue, deserialized.shortValue);
-        Assertions.assertEquals(value.intValue, deserialized.intValue);
-        Assertions.assertEquals(value.longValue, deserialized.longValue);
-        Assertions.assertEquals(value.floatValue, deserialized.floatValue);
-        Assertions.assertEquals(value.doubleValue, deserialized.doubleValue);
-        Assertions.assertArrayEquals(value.byteArrayValue, deserialized.byteArrayValue);
-        Assertions.assertArrayEquals(value.intArrayValue, deserialized.intArrayValue);
-        Assertions.assertArrayEquals(value.longArrayValue, deserialized.longArrayValue);
-        Assertions.assertEquals(value.stringValue, deserialized.stringValue);
-        Assertions.assertEquals(value.uuidValue, deserialized.uuidValue);
+        assertEquals(value.byteValue, deserialized.byteValue);
+        assertEquals(value.shortValue, deserialized.shortValue);
+        assertEquals(value.intValue, deserialized.intValue);
+        assertEquals(value.longValue, deserialized.longValue);
+        assertEquals(value.floatValue, deserialized.floatValue);
+        assertEquals(value.doubleValue, deserialized.doubleValue);
+        assertArrayEquals(value.byteArrayValue, deserialized.byteArrayValue);
+        assertArrayEquals(value.intArrayValue, deserialized.intArrayValue);
+        assertArrayEquals(value.longArrayValue, deserialized.longArrayValue);
+        assertEquals(value.stringValue, deserialized.stringValue);
+        assertEquals(value.uuidValue, deserialized.uuidValue);
 
-        deserialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, Flat.class));
+        deserialized = assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, Flat.class));
 
-        Assertions.assertEquals(value.byteValue, deserialized.byteValue);
-        Assertions.assertEquals(value.shortValue, deserialized.shortValue);
-        Assertions.assertEquals(value.intValue, deserialized.intValue);
-        Assertions.assertEquals(value.longValue, deserialized.longValue);
-        Assertions.assertEquals(value.floatValue, deserialized.floatValue);
-        Assertions.assertEquals(value.doubleValue, deserialized.doubleValue);
-        Assertions.assertArrayEquals(value.byteArrayValue, deserialized.byteArrayValue);
-        Assertions.assertArrayEquals(value.intArrayValue, deserialized.intArrayValue);
-        Assertions.assertArrayEquals(value.longArrayValue, deserialized.longArrayValue);
-        Assertions.assertEquals(value.stringValue, deserialized.stringValue);
-        Assertions.assertEquals(value.uuidValue, deserialized.uuidValue);
+        assertEquals(value.byteValue, deserialized.byteValue);
+        assertEquals(value.shortValue, deserialized.shortValue);
+        assertEquals(value.intValue, deserialized.intValue);
+        assertEquals(value.longValue, deserialized.longValue);
+        assertEquals(value.floatValue, deserialized.floatValue);
+        assertEquals(value.doubleValue, deserialized.doubleValue);
+        assertArrayEquals(value.byteArrayValue, deserialized.byteArrayValue);
+        assertArrayEquals(value.intArrayValue, deserialized.intArrayValue);
+        assertArrayEquals(value.longArrayValue, deserialized.longArrayValue);
+        assertEquals(value.stringValue, deserialized.stringValue);
+        assertEquals(value.uuidValue, deserialized.uuidValue);
     }
 
     @Test
@@ -70,12 +71,12 @@ public final class SerializationTests {
         value.value1 = 123;
         value.value2 = 234;
 
-        final ByteBuffer serialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.serialize(value));
+        final ByteBuffer serialized = assertDoesNotThrow(() -> BinarySerialization.serialize(value));
 
-        final FlatFields deserialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, FlatFields.class));
+        final FlatFields deserialized = assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, FlatFields.class));
 
-        Assertions.assertEquals(value.value1, deserialized.value1);
-        Assertions.assertEquals(0, deserialized.value2);
+        assertEquals(value.value1, deserialized.value1);
+        assertEquals(0, deserialized.value2);
     }
 
     @Test
@@ -87,21 +88,21 @@ public final class SerializationTests {
         value.finalIntArray[1] = 64;
         value.finalIntArray[2] = 420;
 
-        final ByteBuffer serialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.serialize(value));
+        final ByteBuffer serialized = assertDoesNotThrow(() -> BinarySerialization.serialize(value));
 
-        final WithModifiers deserialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, WithModifiers.class));
+        final WithModifiers deserialized = assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, WithModifiers.class));
 
-        Assertions.assertEquals(value.nonTransientInt, deserialized.nonTransientInt);
-        Assertions.assertEquals(0, deserialized.transientInt);
-        Assertions.assertArrayEquals(value.finalIntArray, deserialized.finalIntArray);
+        assertEquals(value.nonTransientInt, deserialized.nonTransientInt);
+        assertEquals(0, deserialized.transientInt);
+        assertArrayEquals(value.finalIntArray, deserialized.finalIntArray);
     }
 
     @Test
     public void testFinal() {
-        Assertions.assertThrows(SerializationException.class, () -> BinarySerialization.serialize(new SerializeFinalPrimitive()));
-        Assertions.assertThrows(SerializationException.class, () -> BinarySerialization.serialize(new SerializeFinalEnum()));
-        Assertions.assertThrows(SerializationException.class, () -> BinarySerialization.serialize(new SerializeFinalImmutableObject()));
-        Assertions.assertThrows(SerializationException.class, () -> BinarySerialization.serialize(new SerializedStaticFields()));
+        assertThrows(SerializationException.class, () -> BinarySerialization.serialize(new SerializeFinalPrimitive()));
+        assertThrows(SerializationException.class, () -> BinarySerialization.serialize(new SerializeFinalEnum()));
+        assertThrows(SerializationException.class, () -> BinarySerialization.serialize(new SerializeFinalImmutableObject()));
+        assertThrows(SerializationException.class, () -> BinarySerialization.serialize(new SerializedStaticFields()));
     }
 
     @Test
@@ -111,13 +112,13 @@ public final class SerializationTests {
         root.child = new Recursive();
         root.child.value = 234;
 
-        final ByteBuffer serialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.serialize(root));
+        final ByteBuffer serialized = assertDoesNotThrow(() -> BinarySerialization.serialize(root));
 
-        final Recursive deserialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, Recursive.class));
+        final Recursive deserialized = assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, Recursive.class));
 
-        Assertions.assertEquals(root.value, deserialized.value);
-        Assertions.assertNotNull(deserialized.child);
-        Assertions.assertEquals(root.child.value, deserialized.child.value);
+        assertEquals(root.value, deserialized.value);
+        assertNotNull(deserialized.child);
+        assertEquals(root.child.value, deserialized.child.value);
     }
 
     @Test
@@ -127,24 +128,24 @@ public final class SerializationTests {
         value.sup1 = 234;
         value.sup2 = 345;
 
-        final ByteBuffer serialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.serialize(value));
+        final ByteBuffer serialized = assertDoesNotThrow(() -> BinarySerialization.serialize(value));
 
-        final Subclass deserialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, Subclass.class));
+        final Subclass deserialized = assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, Subclass.class));
 
-        Assertions.assertEquals(value.val, deserialized.val);
-        Assertions.assertEquals(0, deserialized.sup1);
-        Assertions.assertEquals(value.sup2, deserialized.sup2);
+        assertEquals(value.val, deserialized.val);
+        assertEquals(0, deserialized.sup1);
+        assertEquals(value.sup2, deserialized.sup2);
     }
 
     @Test
     public void testPrimitiveArray() {
         final byte[] value = new byte[]{1, 2, 3, 4, 5, 6, 7, 8};
 
-        final ByteBuffer serialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.serialize(value));
+        final ByteBuffer serialized = assertDoesNotThrow(() -> BinarySerialization.serialize(value));
 
-        final byte[] deserialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, byte[].class));
+        final byte[] deserialized = assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, byte[].class));
 
-        Assertions.assertArrayEquals(value, deserialized);
+        assertArrayEquals(value, deserialized);
     }
 
     @Test
@@ -155,11 +156,11 @@ public final class SerializationTests {
         value[1].intValue = 23;
         value[1].stringValue = "a test";
 
-        final ByteBuffer serialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.serialize(value));
+        final ByteBuffer serialized = assertDoesNotThrow(() -> BinarySerialization.serialize(value));
 
-        final Flat[] deserialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, Flat[].class));
+        final Flat[] deserialized = assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, Flat[].class));
 
-        Assertions.assertArrayEquals(value, deserialized);
+        assertArrayEquals(value, deserialized);
     }
 
     @Test
@@ -167,24 +168,24 @@ public final class SerializationTests {
         final WithEnum value = new WithEnum();
         value.value = WithEnum.TestEnum.TWO;
 
-        final ByteBuffer serialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.serialize(value));
+        final ByteBuffer serialized = assertDoesNotThrow(() -> BinarySerialization.serialize(value));
 
-        final WithEnum deserialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, WithEnum.class));
+        final WithEnum deserialized = assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, WithEnum.class));
 
-        Assertions.assertEquals(value.value, deserialized.value);
+        assertEquals(value.value, deserialized.value);
     }
 
     @Test
     public void testIgnoreStaticFields() {
         final IgnoreStaticFields value = new IgnoreStaticFields();
 
-        final ByteBuffer serialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.serialize(value));
+        final ByteBuffer serialized = assertDoesNotThrow(() -> BinarySerialization.serialize(value));
 
         IgnoreStaticFields.s = 654;
 
-        Assertions.assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, IgnoreStaticFields.class));
+        assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, IgnoreStaticFields.class));
 
-        Assertions.assertEquals(654, IgnoreStaticFields.s);
+        assertEquals(654, IgnoreStaticFields.s);
     }
 
     @Test
@@ -195,27 +196,27 @@ public final class SerializationTests {
         value.c = new Custom();
         value.c.x = 43;
 
-        final ByteBuffer serialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.serialize(value));
+        final ByteBuffer serialized = assertDoesNotThrow(() -> BinarySerialization.serialize(value));
 
-        final MultipleCustomSerializer deserialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, MultipleCustomSerializer.class));
+        final MultipleCustomSerializer deserialized = assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, MultipleCustomSerializer.class));
 
-        Assertions.assertNotNull(deserialized.a);
-        Assertions.assertEquals(value.a.x * 2 + 1, deserialized.a.x);
-        Assertions.assertNull(deserialized.b);
-        Assertions.assertNotNull(deserialized.c);
-        Assertions.assertEquals(value.c.x * 2 + 1, deserialized.c.x);
+        assertNotNull(deserialized.a);
+        assertEquals(value.a.x * 2 + 1, deserialized.a.x);
+        assertNull(deserialized.b);
+        assertNotNull(deserialized.c);
+        assertEquals(value.c.x * 2 + 1, deserialized.c.x);
     }
 
     @Test
     public void testMutableIndirect() {
         final MutableIndirectRoot value = new MutableIndirectRoot();
-        Assertions.assertDoesNotThrow(() -> BinarySerialization.serialize(value));
+        assertDoesNotThrow(() -> BinarySerialization.serialize(value));
     }
 
     @Test
     public void testImmutableIndirect() {
         final ImmutableIndirectRoot value = new ImmutableIndirectRoot();
-        Assertions.assertThrows(SerializationException.class, () -> BinarySerialization.serialize(value));
+        assertThrows(SerializationException.class, () -> BinarySerialization.serialize(value));
     }
 
     @Test
@@ -223,13 +224,13 @@ public final class SerializationTests {
         final PolymorphicFieldHolder value = new PolymorphicFieldHolder();
 
         // Serializing null does not throw because no serializer is looked up.
-        Assertions.assertDoesNotThrow(() -> BinarySerialization.serialize(value));
+        assertDoesNotThrow(() -> BinarySerialization.serialize(value));
 
         value.value = new PolymorphicFieldClassMul2();
-        Assertions.assertThrows(SerializationException.class, () -> BinarySerialization.serialize(value));
+        assertThrows(SerializationException.class, () -> BinarySerialization.serialize(value));
 
         value.value = new PolymorphicFieldClassAdd1();
-        Assertions.assertThrows(SerializationException.class, () -> BinarySerialization.serialize(value));
+        assertThrows(SerializationException.class, () -> BinarySerialization.serialize(value));
     }
 
     @Test
@@ -241,16 +242,16 @@ public final class SerializationTests {
         value.value = new PolymorphicFieldClassAdd1();
         value.value.x = 2;
 
-        final ByteBuffer serialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.serialize(value));
+        final ByteBuffer serialized = assertDoesNotThrow(() -> BinarySerialization.serialize(value));
 
         // New instance of polymorphic field value.
-        PolymorphicFieldHolder deserialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, PolymorphicFieldHolder.class));
-        Assertions.assertEquals(PolymorphicFieldClassAdd1.class, deserialized.value.getClass());
+        PolymorphicFieldHolder deserialized = assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, PolymorphicFieldHolder.class));
+        assertEquals(PolymorphicFieldClassAdd1.class, deserialized.value.getClass());
 
         // New instance of polymorphic field value in existing owner instance.
         value.value = new PolymorphicFieldClassMul2();
-        deserialized = Assertions.assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, PolymorphicFieldHolder.class, value));
-        Assertions.assertEquals(PolymorphicFieldClassAdd1.class, deserialized.value.getClass());
+        deserialized = assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, PolymorphicFieldHolder.class, value));
+        assertEquals(PolymorphicFieldClassAdd1.class, deserialized.value.getClass());
     }
 
     @Serialized
