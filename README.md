@@ -113,3 +113,17 @@ public class Example {
     }
 }
 ```
+
+## Maven
+
+Ceres can be included into a project via the Maven repository at http://maven.cil.li.
+
+For example, using Gradle:
+
+```groovy
+repositories {
+    maven { url "http://maven.cil.li/" }
+}
+
+implementation 'li.cil.ceres:ceres:0.0.2+'
+```
