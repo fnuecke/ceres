@@ -115,8 +115,8 @@ final class CompiledSerializer {
 
         cw.visitEnd();
 
-        final Class<Serializer<T>> serializerClass = (Class<Serializer<T>>) UNSAFE.defineAnonymousClass(type, cw.toByteArray(), null);
         try {
+            final Class<Serializer<T>> serializerClass = (Class<Serializer<T>>) UNSAFE.defineAnonymousClass(type, cw.toByteArray(), null);
             return serializerClass.newInstance();
         } catch (final Throwable e) {
             throw new SerializationException(String.format("Failed generating serializer for type [%s]", type), e);
