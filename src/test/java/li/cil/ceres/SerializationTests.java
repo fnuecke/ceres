@@ -254,6 +254,21 @@ public final class SerializationTests {
         assertEquals(PolymorphicFieldClassAdd1.class, deserialized.value.getClass());
     }
 
+    @Test
+    public void testStringArray() {
+        final ByteBuffer serialized = BinarySerialization.serialize(new StringArrayTest());
+
+        final StringArrayTest deserialized = BinarySerialization.deserialize(serialized, StringArrayTest.class);
+
+        assertEquals(deserialized.data[0], "a");
+        assertEquals(deserialized.data[1], "b");
+        assertEquals(deserialized.data[2], "c");
+    }
+
+    public static final class StringArrayTest {
+        public String[] data = {"a", "b", "c"};
+    }
+
     @Serialized
     public static final class Flat {
         private byte byteValue;

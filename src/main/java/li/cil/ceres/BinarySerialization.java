@@ -144,107 +144,130 @@ public final class BinarySerialization {
                 return;
             }
 
-            if (type == boolean[].class) {
-                final boolean[] data = (boolean[]) value;
-                try {
-                    stream.writeInt(data.length);
-                    for (final boolean datum : data) {
-                        stream.writeBoolean(datum);
-                    }
-                } catch (final IOException e) {
-                    throw new SerializationException(e);
-                }
-            } else if (type == byte[].class) {
-                final byte[] data = (byte[]) value;
-                try {
-                    stream.writeInt(data.length);
-                    stream.write(data);
-                } catch (final IOException e) {
-                    throw new SerializationException(e);
-                }
-            } else if (type == char[].class) {
-                final char[] data = (char[]) value;
-                try {
-                    stream.writeInt(data.length);
-                    for (final char datum : data) {
-                        stream.writeChar(datum);
-                    }
-                } catch (final IOException e) {
-                    throw new SerializationException(e);
-                }
-            } else if (type == short[].class) {
-                final short[] data = (short[]) value;
-                try {
-                    stream.writeInt(data.length);
-                    for (final short datum : data) {
-                        stream.writeShort(datum);
-                    }
-                } catch (final IOException e) {
-                    throw new SerializationException(e);
-                }
-            } else if (type == int[].class) {
-                final int[] data = (int[]) value;
-                try {
-                    stream.writeInt(data.length);
-                    for (final int datum : data) {
-                        stream.writeInt(datum);
-                    }
-                } catch (final IOException e) {
-                    throw new SerializationException(e);
-                }
-            } else if (type == long[].class) {
-                final long[] data = (long[]) value;
-                try {
-                    stream.writeInt(data.length);
-                    for (final long datum : data) {
-                        stream.writeLong(datum);
-                    }
-                } catch (final IOException e) {
-                    throw new SerializationException(e);
-                }
-            } else if (type == float[].class) {
-                final float[] data = (float[]) value;
-                try {
-                    stream.writeInt(data.length);
-                    for (final float datum : data) {
-                        stream.writeFloat(datum);
-                    }
-                } catch (final IOException e) {
-                    throw new SerializationException(e);
-                }
-            } else if (type == double[].class) {
-                final double[] data = (double[]) value;
-                try {
-                    stream.writeInt(data.length);
-                    for (final double datum : data) {
-                        stream.writeDouble(datum);
-                    }
-                } catch (final IOException e) {
-                    throw new SerializationException(e);
-                }
-            } else if (type.isArray()) {
+            if (type.isArray()) {
                 final Class<?> componentType = type.getComponentType();
-                final li.cil.ceres.api.Serializer<?> serializer = Ceres.getSerializer(componentType);
-                final ByteArrayOutputStream componentData = new ByteArrayOutputStream();
-                final DataOutputStream componentStream = new DataOutputStream(componentData);
-                final Object[] data = (Object[]) value;
-                try {
-                    stream.writeInt(data.length);
-                    for (final Object datum : data) {
-                        if (datum == null) {
-                            stream.writeInt(OBJECT_ARRAY_NULL_VALUE);
-                            continue;
+
+                if (componentType == boolean.class) {
+                    final boolean[] data = (boolean[]) value;
+                    try {
+                        stream.writeInt(data.length);
+                        for (final boolean datum : data) {
+                            stream.writeBoolean(datum);
                         }
-                        if (datum.getClass() != componentType) {
-                            throw new SerializationException(String.format("Polymorphism detected in object array [%s]. This is not supported.", name));
-                        }
-                        serializer.serialize(new Serializer(componentStream), (Class) componentType, datum);
-                        stream.writeInt(componentData.size());
-                        stream.write(componentData.toByteArray());
-                        componentData.reset();
+                    } catch (final IOException e) {
+                        throw new SerializationException(e);
                     }
-                } catch (final IOException e) {
-                    throw new SerializationException(e);
+                } else if (componentType == byte.class) {
+                    final byte[] data = (byte[]) value;
+                    try {
+                        stream.writeInt(data.length);
+                        stream.write(data);
+                    } catch (final IOException e) {
+                        throw new SerializationException(e);
+                    }
+                } else if (componentType == char.class) {
+                    final char[] data = (char[]) value;
+                    try {
+                        stream.writeInt(data.length);
+                        for (final char datum : data) {
+                            stream.writeChar(datum);
+                        }
+                    } catch (final IOException e) {
+                        throw new SerializationException(e);
+                    }
+                } else if (componentType == short.class) {
+                    final short[] data = (short[]) value;
+                    try {
+                        stream.writeInt(data.length);
+                        for (final short datum : data) {
+                            stream.writeShort(datum);
+                        }
+                    } catch (final IOException e) {
+                        throw new SerializationException(e);
+                    }
+                } else if (componentType == int.class) {
+                    final int[] data = (int[]) value;
+                    try {
+                        stream.writeInt(data.length);
+                        for (final int datum : data) {
+                            stream.writeInt(datum);
+                        }
+                    } catch (final IOException e) {
+                        throw new SerializationException(e);
+                    }
+                } else if (componentType == long.class) {
+                    final long[] data = (long[]) value;
+                    try {
+                        stream.writeInt(data.length);
+                        for (final long datum : data) {
+                            stream.writeLong(datum);
+                        }
+                    } catch (final IOException e) {
+                        throw new SerializationException(e);
+                    }
+                } else if (componentType == float.class) {
+                    final float[] data = (float[]) value;
+                    try {
+                        stream.writeInt(data.length);
+                        for (final float datum : data) {
+                            stream.writeFloat(datum);
+                        }
+                    } catch (final IOException e) {
+                        throw new SerializationException(e);
+                    }
+                } else if (componentType == double.class) {
+                    final double[] data = (double[]) value;
+                    try {
+                        stream.writeInt(data.length);
+                        for (final double datum : data) {
+                            stream.writeDouble(datum);
+                        }
+                    } catch (final IOException e) {
+                        throw new SerializationException(e);
+                    }
+                } else if (componentType.isEnum()) {
+                    final Enum[] data = (Enum[]) value;
+                    try {
+                        stream.writeInt(data.length);
+                        for (final Enum datum : data) {
+                            stream.writeInt(datum.ordinal());
+                        }
+                    } catch (final IOException e) {
+                        throw new SerializationException(e);
+                    }
+                } else if (componentType == String.class) {
+                    final String[] data = (String[]) value;
+                    try {
+                        stream.writeInt(data.length);
+                        for (final String datum : data) {
+                            stream.writeUTF(datum);
+                        }
+                    } catch (final IOException e) {
+                        throw new SerializationException(e);
+                    }
+                } else {
+                    final li.cil.ceres.api.Serializer<?> serializer = Ceres.getSerializer(componentType);
+                    final ByteArrayOutputStream componentData = new ByteArrayOutputStream();
+                    final DataOutputStream componentStream = new DataOutputStream(componentData);
+                    final Object[] data = (Object[]) value;
+                    try {
+                        stream.writeInt(data.length);
+                        for (final Object datum : data) {
+                            if (datum == null) {
+                                stream.writeInt(OBJECT_ARRAY_NULL_VALUE);
+                                continue;
+                            }
+                            if (datum.getClass() != componentType) {
+                                throw new SerializationException(String.format("Polymorphism detected in object array [%s]. This is not supported.", name));
+                            }
+                            serializer.serialize(new Serializer(componentStream), (Class) componentType, datum);
+                            stream.writeInt(componentData.size());
+                            stream.write(componentData.toByteArray());
+                            componentData.reset();
+                        }
+                    } catch (final IOException e) {
+                        throw new SerializationException(e);
+                    }
                 }
             } else if (type.isEnum()) {
                 putInt(name, ((Enum) value).ordinal());
@@ -359,149 +382,182 @@ public final class BinarySerialization {
                 return null;
             }
 
-            if (type == boolean[].class) {
-                try {
-                    final int length = stream.readInt();
-                    boolean[] data = (boolean[]) into;
-                    if (data == null || data.length != length) {
-                        data = new boolean[length];
-                    }
-
-                    for (int i = 0; i < length; i++) {
-                        data[i] = stream.readBoolean();
-                    }
-                    return data;
-                } catch (final IOException e) {
-                    throw new SerializationException(e);
-                }
-            } else if (type == byte[].class) {
-                try {
-                    final int length = stream.readInt();
-                    byte[] data = (byte[]) into;
-                    if (data == null || data.length != length) {
-                        data = new byte[length];
-                    }
-
-                    //noinspection ResultOfMethodCallIgnored
-                    stream.read(data);
-                    return data;
-                } catch (final IOException e) {
-                    throw new SerializationException(e);
-                }
-            } else if (type == char[].class) {
-                try {
-                    final int length = stream.readInt();
-                    char[] data = (char[]) into;
-                    if (data == null || data.length != length) {
-                        data = new char[length];
-                    }
-
-                    for (int i = 0; i < length; i++) {
-                        data[i] = stream.readChar();
-                    }
-                    return data;
-                } catch (final IOException e) {
-                    throw new SerializationException(e);
-                }
-            } else if (type == short[].class) {
-                try {
-                    final int length = stream.readInt();
-                    short[] data = (short[]) into;
-                    if (data == null || data.length != length) {
-                        data = new short[length];
-                    }
-
-                    for (int i = 0; i < length; i++) {
-                        data[i] = stream.readShort();
-                    }
-                    return data;
-                } catch (final IOException e) {
-                    throw new SerializationException(e);
-                }
-            } else if (type == int[].class) {
-                try {
-                    final int length = stream.readInt();
-                    int[] data = (int[]) into;
-                    if (data == null || data.length != length) {
-                        data = new int[length];
-                    }
-
-                    for (int i = 0; i < length; i++) {
-                        data[i] = stream.readInt();
-                    }
-                    return data;
-                } catch (final IOException e) {
-                    throw new SerializationException(e);
-                }
-            } else if (type == long[].class) {
-                try {
-                    final int length = stream.readInt();
-                    long[] data = (long[]) into;
-                    if (data == null || data.length != length) {
-                        data = new long[length];
-                    }
-
-                    for (int i = 0; i < length; i++) {
-                        data[i] = stream.readLong();
-                    }
-                    return data;
-                } catch (final IOException e) {
-                    throw new SerializationException(e);
-                }
-            } else if (type == float[].class) {
-                try {
-                    final int length = stream.readInt();
-                    float[] data = (float[]) into;
-                    if (data == null || data.length != length) {
-                        data = new float[length];
-                    }
-
-                    for (int i = 0; i < length; i++) {
-                        data[i] = stream.readFloat();
-                    }
-                    return data;
-                } catch (final IOException e) {
-                    throw new SerializationException(e);
-                }
-            } else if (type == double[].class) {
-                try {
-                    final int length = stream.readInt();
-                    double[] data = (double[]) into;
-                    if (data == null || data.length != length) {
-                        data = new double[length];
-                    }
-
-                    for (int i = 0; i < length; i++) {
-                        data[i] = stream.readDouble();
-                    }
-                    return data;
-                } catch (final IOException e) {
-                    throw new SerializationException(e);
-                }
-            } else if (type.isArray()) {
+            if (type.isArray()) {
                 final Class<?> componentType = type.getComponentType();
-                final li.cil.ceres.api.Serializer<?> serializer = Ceres.getSerializer(componentType);
-                try {
-                    final int length = stream.readInt();
-                    Object[] data = (Object[]) into;
-                    if (data == null || data.length != length) {
-                        data = (Object[]) Array.newInstance(componentType, length);
-                    }
 
-                    for (int i = 0; i < length; i++) {
-                        final int componentLength = stream.readInt();
-                        if (componentLength <= 0) {
-                            continue;
+                if (componentType == boolean.class) {
+                    try {
+                        final int length = stream.readInt();
+                        boolean[] data = (boolean[]) into;
+                        if (data == null || data.length != length) {
+                            data = new boolean[length];
                         }
-                        final byte[] bytes = new byte[componentLength];
-                        if (stream.read(bytes) != bytes.length) {
-                            throw new SerializationException("Failed reading object array item data.");
+
+                        for (int i = 0; i < length; i++) {
+                            data[i] = stream.readBoolean();
                         }
-                        data[i] = serializer.deserialize(new Deserializer(new DataInputStream(new ByteArrayInputStream(bytes))), (Class) componentType, data[i]);
+                        return data;
+                    } catch (final IOException e) {
+                        throw new SerializationException(e);
                     }
-                    return data;
-                } catch (final IOException e) {
-                    throw new SerializationException(e);
+                } else if (componentType == byte.class) {
+                    try {
+                        final int length = stream.readInt();
+                        byte[] data = (byte[]) into;
+                        if (data == null || data.length != length) {
+                            data = new byte[length];
+                        }
+
+                        //noinspection ResultOfMethodCallIgnored
+                        stream.read(data);
+                        return data;
+                    } catch (final IOException e) {
+                        throw new SerializationException(e);
+                    }
+                } else if (componentType == char.class) {
+                    try {
+                        final int length = stream.readInt();
+                        char[] data = (char[]) into;
+                        if (data == null || data.length != length) {
+                            data = new char[length];
+                        }
+
+                        for (int i = 0; i < length; i++) {
+                            data[i] = stream.readChar();
+                        }
+                        return data;
+                    } catch (final IOException e) {
+                        throw new SerializationException(e);
+                    }
+                } else if (componentType == short.class) {
+                    try {
+                        final int length = stream.readInt();
+                        short[] data = (short[]) into;
+                        if (data == null || data.length != length) {
+                            data = new short[length];
+                        }
+
+                        for (int i = 0; i < length; i++) {
+                            data[i] = stream.readShort();
+                        }
+                        return data;
+                    } catch (final IOException e) {
+                        throw new SerializationException(e);
+                    }
+                } else if (componentType == int.class) {
+                    try {
+                        final int length = stream.readInt();
+                        int[] data = (int[]) into;
+                        if (data == null || data.length != length) {
+                            data = new int[length];
+                        }
+
+                        for (int i = 0; i < length; i++) {
+                            data[i] = stream.readInt();
+                        }
+                        return data;
+                    } catch (final IOException e) {
+                        throw new SerializationException(e);
+                    }
+                } else if (componentType == long.class) {
+                    try {
+                        final int length = stream.readInt();
+                        long[] data = (long[]) into;
+                        if (data == null || data.length != length) {
+                            data = new long[length];
+                        }
+
+                        for (int i = 0; i < length; i++) {
+                            data[i] = stream.readLong();
+                        }
+                        return data;
+                    } catch (final IOException e) {
+                        throw new SerializationException(e);
+                    }
+                } else if (componentType == float.class) {
+                    try {
+                        final int length = stream.readInt();
+                        float[] data = (float[]) into;
+                        if (data == null || data.length != length) {
+                            data = new float[length];
+                        }
+
+                        for (int i = 0; i < length; i++) {
+                            data[i] = stream.readFloat();
+                        }
+                        return data;
+                    } catch (final IOException e) {
+                        throw new SerializationException(e);
+                    }
+                } else if (componentType == double.class) {
+                    try {
+                        final int length = stream.readInt();
+                        double[] data = (double[]) into;
+                        if (data == null || data.length != length) {
+                            data = new double[length];
+                        }
+
+                        for (int i = 0; i < length; i++) {
+                            data[i] = stream.readDouble();
+                        }
+                        return data;
+                    } catch (final IOException e) {
+                        throw new SerializationException(e);
+                    }
+                } else if (componentType.isEnum()) {
+                    try {
+                        final int length = stream.readInt();
+                        Enum[] data = (Enum[]) into;
+                        if (data == null || data.length != length) {
+                            data = (Enum[]) Array.newInstance(componentType, length);
+                        }
+
+                        for (int i = 0; i < length; i++) {
+                            data[i] = (Enum) componentType.getEnumConstants()[stream.readInt()];
+                        }
+                        return data;
+                    } catch (final IOException e) {
+                        throw new SerializationException(e);
+                    }
+                } else if (componentType == String.class) {
+                    try {
+                        final int length = stream.readInt();
+                        String[] data = (String[]) into;
+                        if (data == null || data.length != length) {
+                            data = new String[length];
+                        }
+
+                        for (int i = 0; i < length; i++) {
+                            data[i] = stream.readUTF();
+                        }
+                        return data;
+                    } catch (final IOException e) {
+                        throw new SerializationException(e);
+                    }
+                } else {
+                    final li.cil.ceres.api.Serializer<?> serializer = Ceres.getSerializer(componentType);
+                    try {
+                        final int length = stream.readInt();
+                        Object[] data = (Object[]) into;
+                        if (data == null || data.length != length) {
+                            data = (Object[]) Array.newInstance(componentType, length);
+                        }
+
+                        for (int i = 0; i < length; i++) {
+                            final int componentLength = stream.readInt();
+                            if (componentLength <= 0) {
+                                continue;
+                            }
+                            final byte[] bytes = new byte[componentLength];
+                            if (stream.read(bytes) != bytes.length) {
+                                throw new SerializationException("Failed reading object array item data.");
+                            }
+                            data[i] = serializer.deserialize(new Deserializer(new DataInputStream(new ByteArrayInputStream(bytes))), (Class) componentType, data[i]);
+                        }
+                        return data;
+                    } catch (final IOException e) {
+                        throw new SerializationException(e);
+                    }
                 }
             } else if (type.isEnum()) {
                 return type.getEnumConstants()[getInt(name)];
