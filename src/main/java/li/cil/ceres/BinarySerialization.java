@@ -20,15 +20,24 @@ import java.nio.ByteBuffer;
  * define the structure of the serialized data.
  */
 public final class BinarySerialization {
-    public static <T> void serialize(final DataOutputStream stream, final T value) throws SerializationException {
-        @SuppressWarnings("unchecked") final Class<T> type = (Class<T>) value.getClass();
+    public static <T> void serialize(final DataOutputStream stream, final T value, final Class<T> type) throws SerializationException {
         Ceres.getSerializer(type).serialize(new Serializer(stream), type, value);
     }
 
-    public static <T> ByteBuffer serialize(final T value) throws SerializationException {
+    public static <T> ByteBuffer serialize(final T value, final Class<T> type) throws SerializationException {
         final ByteArrayOutputStream data = new ByteArrayOutputStream();
-        serialize(new DataOutputStream(data), value);
+        serialize(new DataOutputStream(data), value, type);
         return ByteBuffer.wrap(data.toByteArray());
+    }
+
+    public static <T> void serialize(final DataOutputStream stream, final T value) throws SerializationException {
+        @SuppressWarnings("unchecked") final Class<T> type = (Class<T>) value.getClass();
+        serialize(stream, value, type);
+    }
+
+    public static <T> ByteBuffer serialize(final T value) throws SerializationException {
+        @SuppressWarnings("unchecked") final Class<T> type = (Class<T>) value.getClass();
+        return serialize(value, type);
     }
 
     public static <T> T deserialize(final DataInputStream stream, final Class<T> type, @Nullable final T into) throws SerializationException {
