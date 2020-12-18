@@ -265,6 +265,19 @@ public final class SerializationTests {
         assertEquals(deserialized.data[2], "c");
     }
 
+    @Test
+    public void testMultidimensionalArrays() {
+        final MultiDimArray value = new MultiDimArray();
+        value.array[0][1] = 42;
+        value.array[1][1] = 23;
+
+        final ByteBuffer serialized = BinarySerialization.serialize(value);
+        final MultiDimArray deserialized = BinarySerialization.deserialize(serialized, MultiDimArray.class);
+
+        assertArrayEquals(value.array[0], deserialized.array[0]);
+        assertArrayEquals(value.array[1], deserialized.array[1]);
+    }
+
     public static final class StringArrayTest {
         public String[] data = {"a", "b", "c"};
     }
@@ -488,5 +501,10 @@ public final class SerializationTests {
                 }
             }
         }
+    }
+
+    @Serialized
+    public static final class MultiDimArray {
+        public int[][] array = {{1, 2, 3}, {4, 5, 6}};
     }
 }
