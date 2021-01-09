@@ -55,7 +55,12 @@ final class CompiledSerializer {
         }
         classSignature.visitEnd();
 
-        final ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
+        final ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES) {
+            @Override
+            protected ClassLoader getClassLoader() {
+                return type.getClassLoader();
+            }
+        };
         cw.visit(Opcodes.V1_8,
                 Opcodes.ACC_PUBLIC + Opcodes.ACC_FINAL,
                 className,
