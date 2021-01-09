@@ -15,6 +15,7 @@ public final class SerializationTests {
     @AfterEach
     public void unregisterTestSerializers() {
         Ceres.putSerializer(PolymorphicFieldType.class, null);
+        Ceres.putSerializer(Custom.class, null);
     }
 
     @Test
@@ -190,6 +191,8 @@ public final class SerializationTests {
 
     @Test
     public void testCustomSerializer() {
+        Ceres.putSerializer(Custom.class, new CustomSerializer());
+
         final MultipleCustomSerializer value = new MultipleCustomSerializer();
         value.a = new Custom();
         value.a.x = 22;
@@ -402,7 +405,6 @@ public final class SerializationTests {
         public int x;
     }
 
-    @RegisterSerializer
     public static final class CustomSerializer implements Serializer<Custom> {
         @Override
         public void serialize(final SerializationVisitor visitor, final Class<Custom> type, final Object value) throws SerializationException {

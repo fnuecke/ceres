@@ -3,17 +3,14 @@ package li.cil.ceres;
 import li.cil.ceres.api.*;
 import li.cil.ceres.internal.SerializerFactory;
 import li.cil.ceres.serializers.ArraySerializer;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.reflections.Reflections;
+import li.cil.ceres.serializers.ByteBufferSerializer;
+import li.cil.ceres.serializers.UUIDSerializer;
 
 import javax.annotation.Nullable;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Ceres is a simplistic serialization framework.
@@ -32,7 +29,7 @@ import java.util.Map;
  * </ul>
  * <p>
  * To add support for types a {@link Serializer} for that type must be implemented and registered by
- * either calling {@link #putSerializer(Class, Serializer)} or annotating it with {@link RegisterSerializer}.
+ * calling {@link #putSerializer(Class, Serializer)}.
  * <p>
  * Adding support for own types can be eased by marking fields to be serialized with the {@link Serialized}.
  * This will allow automatic generation of a serializer for those types. <em>Important</em>: if a type does
@@ -49,8 +46,6 @@ import java.util.Map;
  * of the serialized value to know the type the serialized data applies to during deserialization.
  */
 public final class Ceres {
-    private static final Logger LOGGER = LogManager.getLogger();
-
     private static final Map<Class<?>, Serializer<?>> SERIALIZERS = new HashMap<>();
     private static boolean isInitialized = false;
 
@@ -65,31 +60,8 @@ public final class Ceres {
 
         isInitialized = true;
 
-        for (final Class<?> type : new Reflections().getSubTypesOf(Serializer.class)) {
-            if (!type.isAnnotationPresent(RegisterSerializer.class)) {
-                continue;
-            }
-
-            try {
-                final ArrayList<Class<?>> supportedTypes = new ArrayList<>();
-                Arrays.stream(type.getGenericInterfaces()).forEach(interfaceType -> {
-                    final ParameterizedType parameterizedType = (ParameterizedType) interfaceType;
-                    if (parameterizedType.getRawType() == Serializer.class) {
-                        final Type[] typeArguments = parameterizedType.getActualTypeArguments();
-                        assert typeArguments.length == 1;
-                        supportedTypes.add((Class<?>) typeArguments[0]);
-                    }
-                });
-                if (!supportedTypes.isEmpty()) {
-                    final Serializer<?> serializer = (Serializer<?>) type.newInstance();
-                    for (final Class<?> supportedType : supportedTypes) {
-                        SERIALIZERS.put(supportedType, serializer);
-                    }
-                }
-            } catch (final InstantiationException | IllegalAccessException e) {
-                LOGGER.error("Failed instantiating serializer [{}]: {}", type, e);
-            }
-        }
+        putSerializer(ByteBuffer.class, new ByteBufferSerializer());
+        putSerializer(UUID.class, new UUIDSerializer());
     }
 
     /**

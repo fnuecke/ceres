@@ -1,11 +1,13 @@
 package li.cil.ceres.serializers;
 
-import li.cil.ceres.api.*;
+import li.cil.ceres.api.DeserializationVisitor;
+import li.cil.ceres.api.SerializationException;
+import li.cil.ceres.api.SerializationVisitor;
+import li.cil.ceres.api.Serializer;
 
 import javax.annotation.Nullable;
 import java.util.UUID;
 
-@RegisterSerializer
 public final class UUIDSerializer implements Serializer<UUID> {
     public static final UUIDSerializer INSTANCE = new UUIDSerializer();
 

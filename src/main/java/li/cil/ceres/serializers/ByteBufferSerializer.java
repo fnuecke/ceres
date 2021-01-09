@@ -1,12 +1,14 @@
 package li.cil.ceres.serializers;
 
-import li.cil.ceres.api.*;
+import li.cil.ceres.api.DeserializationVisitor;
+import li.cil.ceres.api.SerializationException;
+import li.cil.ceres.api.SerializationVisitor;
+import li.cil.ceres.api.Serializer;
 
 import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.nio.InvalidMarkException;
 
-@RegisterSerializer
 public final class ByteBufferSerializer implements Serializer<ByteBuffer> {
     @Override
     public void serialize(final SerializationVisitor visitor, final Class<ByteBuffer> type, final Object value) throws SerializationException {

@@ -15,8 +15,6 @@ import javax.annotation.Nullable;
  * <p>
  * Serializers must be registered by calling {@link li.cil.ceres.Ceres#putSerializer(Class, Serializer)}
  * before they will be used by the serialization system.
- * <p>
- * Serializers may be automatically registered by adding the {@link RegisterSerializer} annotation.
  *
  * @param <T> the type the serializer provides serialization for.
  */
