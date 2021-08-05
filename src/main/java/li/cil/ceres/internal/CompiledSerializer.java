@@ -41,7 +41,7 @@ final class CompiledSerializer {
         }
 
         final ArrayList<Field> fields = SerializerUtils.collectSerializableFields(type);
-        final String className = Type.getInternalName(type) + "$" + Type.getInternalName(Serializer.class);
+        final String className = Type.getInternalName(type) + "$" + Type.getInternalName(Serializer.class).replace('/', '_');
 
         // Generate signature for `implements Serializer<type>`
         final SignatureWriter classSignature = new SignatureWriter();
