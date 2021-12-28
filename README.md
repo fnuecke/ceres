@@ -118,7 +118,8 @@ public class Example {
 
 Ceres can be included into a project via the Github Package Repository. See [the documentation][GithubPackagesGradle]
 for more information on how to set that up. In short, you'll want to add your username and a public access token into
-your `~/.gradle/gradle.properties` and use those variables in your repository declaration. 
+your `~/.gradle/gradle.properties` and use those variables in your repository declaration. Note that the public access
+token will need `read:packages` permissions.
 
 For example, using Gradle:
 
