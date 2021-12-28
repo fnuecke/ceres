@@ -116,14 +116,26 @@ public class Example {
 
 ## Maven
 
-Ceres can be included into a project via the Maven repository at http://maven.cil.li.
+Ceres can be included into a project via the Github Package Repository. See [the documentation][GithubPackagesGradle]
+for more information on how to set that up. In short, you'll want to add your username and a public access token into
+your `~/.gradle/gradle.properties` and use those variables in your repository declaration. 
 
 For example, using Gradle:
 
 ```groovy
 repositories {
-    maven { url "http://maven.cil.li/" }
+  maven {
+    url = uri("https://maven.pkg.github.com/fnuecke/ceres")
+    credentials {
+      username = project.findProperty("gpr.user") ?: System.getenv("USERNAME")
+      password = project.findProperty("gpr.key") ?: System.getenv("TOKEN")
+    }
+  }
 }
 
-implementation 'li.cil.ceres:ceres:0.0.2+'
+dependencies {
+  implementation 'li.cil.ceres:ceres:0.0.4'
+}
 ```
+
+[GithubPackagesGradle]: https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-gradle-registry

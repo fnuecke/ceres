@@ -16,27 +16,12 @@ def getGitRef() {
     }
 }
 
-final String semver = "${version_major}.${version_minor}.${version_patch}"
-
-String build_number = System.getenv('PROMOTED_NUMBER')
-if (build_number == null)
-    build_number = System.getenv('BUILD_NUMBER')
-if (build_number == null)
-    build_number = getGitRef()
-
-version = "${semver}+${build_number}"
+version = "${semver}+${getGitRef()}"
 group = 'li.cil.ceres'
 
-sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
-compileJava {
-    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
-
-    options.compilerArgs.addAll([
-            '-XDignore.symbol.file'
-    ])
-
-    options.fork = true
-    options.forkOptions.executable = 'javac'
+java.toolchain {
+    languageVersion = JavaLanguageVersion.of(17)
+    vendor = JvmVendorSpec.ADOPTOPENJDK
 }
 
 repositories {
@@ -44,25 +29,33 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'org.jetbrains:annotations:21.0.1'
+    compileOnly 'org.jetbrains:annotations:23.0.0'
     compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
 
-    implementation 'org.ow2.asm:asm-commons:7.2'
-    implementation 'org.ow2.asm:asm:7.2'
+    implementation 'org.ow2.asm:asm-commons:9.1'
+    implementation 'org.ow2.asm:asm:9.1'
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.3.1'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.3.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
 }
 
 publishing {
     publications {
         mavenJava(MavenPublication) {
+            groupId = project.group
+            artifactId = project.name
+            version = semver
             artifact jar
         }
     }
     repositories {
         maven {
-            url System.getenv('MAVEN_PATH')
+            name = "GitHubPackages"
+            url = System.getenv("GITHUB_MAVEN_URL") ?: ""
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
         }
     }
 }

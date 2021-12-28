@@ -10,21 +10,33 @@ import org.objectweb.asm.signature.SignatureVisitor;
 import org.objectweb.asm.signature.SignatureWriter;
 import sun.misc.Unsafe;
 
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.function.BiFunction;
 
 final class CompiledSerializer {
-    private static final Unsafe UNSAFE;
+    private static final BiFunction<Class<?>, byte[], Class<?>> DEFINE_ANONYMOUS_CLASS;
 
     static {
-        final Field field;
         try {
-            field = Unsafe.class.getDeclaredField("theUnsafe");
-            field.setAccessible(true);
-            UNSAFE = (Unsafe) field.get(null);
+            final Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
+            unsafeField.setAccessible(true);
+            final Unsafe unsafe = (Unsafe) unsafeField.get(null);
+            final Field implLookupField = MethodHandles.Lookup.class.getDeclaredField("IMPL_LOOKUP");
+            final Object implLookupBase = unsafe.staticFieldBase(implLookupField);
+            final long implLookupOffset = unsafe.staticFieldOffset(implLookupField);
+            final MethodHandles.Lookup lookup = (MethodHandles.Lookup) unsafe.getObject(implLookupBase, implLookupOffset);
+            DEFINE_ANONYMOUS_CLASS = (parentType, bytecode) -> {
+                try {
+                    return lookup.in(parentType).defineHiddenClass(bytecode, false, MethodHandles.Lookup.ClassOption.NESTMATE).lookupClass();
+                } catch (final IllegalAccessException ignored) {
+                    return null;
+                }
+            };
         } catch (final NoSuchFieldException | IllegalAccessException e) {
-            throw new AssertionError();
+            throw new AssertionError(e);
         }
     }
 
@@ -121,8 +133,8 @@ final class CompiledSerializer {
         cw.visitEnd();
 
         try {
-            final Class<Serializer<T>> serializerClass = (Class<Serializer<T>>) UNSAFE.defineAnonymousClass(type, cw.toByteArray(), null);
-            return serializerClass.newInstance();
+            final Class<Serializer<T>> serializerClass = (Class<Serializer<T>>) DEFINE_ANONYMOUS_CLASS.apply(type, cw.toByteArray());
+            return serializerClass.getDeclaredConstructor().newInstance();
         } catch (final Throwable e) {
             throw new SerializationException(String.format("Failed generating serializer for type [%s]", type), e);
         }
