@@ -104,6 +104,7 @@ public final class Ceres {
             // are part of a to-be-serialized object serializers will directly call the put-
             // and getArray methods on visitors.
             if (type.isArray()) {
+                SERIALIZERS.put(type, ArraySerializer.INSTANCE);
                 return ArraySerializer.INSTANCE;
             }
 
