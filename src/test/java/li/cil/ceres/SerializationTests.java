@@ -347,6 +347,44 @@ public final class SerializationTests {
     }
 
     @Test
+    public void testOutOfRangeEnumOrdinalIsRejected() {
+        // Enums are stored by ordinal, so removing or reordering constants changes what existing
+        // data means. An ordinal past the end of the type is the one case that is detectable.
+        final WithEnum value = new WithEnum();
+        value.value = WithEnum.TestEnum.TWO;
+
+        final byte[] data = assertDoesNotThrow(() -> BinarySerialization.serialize(value)).array().clone();
+        data[data.length - 1] = (byte) 99; // the ordinal is the last value written for this type
+
+        assertThrows(SerializationException.class, () -> BinarySerialization.deserialize(ByteBuffer.wrap(data), WithEnum.class));
+    }
+
+    @Test
+    public void testOutOfRangeEnumOrdinalInArrayIsRejected() {
+        final WithEnumArray value = new WithEnumArray();
+        value.values = new TestEnum[]{TestEnum.ONE, TestEnum.TWO};
+
+        final byte[] data = assertDoesNotThrow(() -> BinarySerialization.serialize(value)).array().clone();
+        data[data.length - 1] = (byte) 99; // the last element's ordinal
+
+        assertThrows(SerializationException.class, () -> BinarySerialization.deserialize(ByteBuffer.wrap(data), WithEnumArray.class));
+    }
+
+    @Test
+    public void testNegativeEnumOrdinalInArrayIsRejected() {
+        final WithEnumArray value = new WithEnumArray();
+        value.values = new TestEnum[]{TestEnum.ONE, TestEnum.TWO};
+
+        final byte[] data = assertDoesNotThrow(() -> BinarySerialization.serialize(value)).array().clone();
+        data[data.length - 4] = (byte) 0xFF;
+        data[data.length - 3] = (byte) 0xFF;
+        data[data.length - 2] = (byte) 0xFF;
+        data[data.length - 1] = (byte) 0xFB; // -5
+
+        assertThrows(SerializationException.class, () -> BinarySerialization.deserialize(ByteBuffer.wrap(data), WithEnumArray.class));
+    }
+
+    @Test
     public void testStringArrayWithNulls() {
         final WithNullableStringArray value = new WithNullableStringArray();
         value.values = new String[]{"a", null, "c", null};

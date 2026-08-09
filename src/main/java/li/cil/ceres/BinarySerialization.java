@@ -112,6 +112,16 @@ public final class BinarySerialization {
         ARRAY_SERIALIZERS.put(String.class, new StringArraySerializer());
     }
 
+    private static Object getEnumConstant(final Class<?> type, final Object[] enumConstants, final int ordinal) {
+        if (ordinal < 0 || ordinal >= enumConstants.length) {
+            throw new SerializationException(String.format(
+                    "Enum ordinal [%d] is out of range for type [%s], which has [%d] constants.",
+                    ordinal, type.getName(), enumConstants.length));
+        }
+
+        return enumConstants[ordinal];
+    }
+
     @Nullable
     private static ArraySerializer getArraySerializer(final Class<?> componentType) {
         if (componentType.isEnum()) {
@@ -376,7 +386,7 @@ public final class BinarySerialization {
             if (type.isArray()) {
                 return getArray(stream, type, into);
             } else if (type.isEnum()) {
-                return type.getEnumConstants()[getInt(name)];
+                return getEnumConstant(type, type.getEnumConstants(), getInt(name));
             } else if (type == String.class) {
                 try {
                     return stream.readUTF();
@@ -741,7 +751,7 @@ public final class BinarySerialization {
                     // NB: compare against the sentinel exactly; any other out-of-range ordinal is
                     // corrupt data and should fail rather than silently deserialize as null.
                     final int ordinal = stream.readInt();
-                    data[i] = ordinal == ENUM_NULL_VALUE ? null : (Enum) enumConstants[ordinal];
+                    data[i] = ordinal == ENUM_NULL_VALUE ? null : (Enum) getEnumConstant(componentType, enumConstants, ordinal);
                 }
                 return data;
             } catch (final IOException e) {
