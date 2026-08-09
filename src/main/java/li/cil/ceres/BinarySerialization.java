@@ -133,7 +133,6 @@ public final class BinarySerialization {
         }
     }
 
-    private static final int OBJECT_ARRAY_NULL_VALUE = -1;
     private static final int ENUM_NULL_VALUE = -1;
     private static final Map<Class<?>, ArraySerializer> ARRAY_SERIALIZERS;
     private static final ArraySerializer ENUM_ARRAY_SERIALIZER = new EnumArraySerializer();
@@ -291,7 +290,7 @@ public final class BinarySerialization {
 
         @FunctionalInterface
         private interface ArrayComponentSerializer {
-            void serialize(DataOutputStream stream, Class<?> type, Object value);
+            void serialize(Object value);
         }
 
         @SuppressWarnings({"unchecked", "rawtypes"})
@@ -304,29 +303,25 @@ public final class BinarySerialization {
             } else {
                 final ArrayComponentSerializer componentSerializer;
                 if (componentType.isArray()) {
-                    componentSerializer = (s, t, v) -> putArray(s, name, t, v);
+                    componentSerializer = v -> putArray(stream, name, componentType, v);
                 } else {
                     final li.cil.ceres.api.Serializer<?> serializer = Ceres.getSerializer(componentType);
-                    componentSerializer = (s, t, v) -> serializer.serialize(new Serializer(s), (Class) t, v);
+                    final Serializer visitor = new Serializer(stream);
+                    componentSerializer = v -> serializer.serialize(visitor, (Class) componentType, v);
                 }
 
-                final ByteArrayOutputStream componentData = new ByteArrayOutputStream();
-                final DataOutputStream componentStream = new DataOutputStream(componentData);
                 final Object[] data = (Object[]) value;
                 try {
                     stream.writeInt(data.length);
                     for (final Object datum : data) {
-                        if (datum == null) {
-                            stream.writeInt(OBJECT_ARRAY_NULL_VALUE);
-                            continue;
-                        }
-                        if (datum.getClass() != componentType) {
+                        if (datum != null && datum.getClass() != componentType) {
                             throw new SerializationException(String.format("Polymorphism detected in array [%s]. This is not supported.", name));
                         }
-                        componentSerializer.serialize(componentStream, componentType, datum);
-                        stream.writeInt(componentData.size());
-                        stream.write(componentData.toByteArray());
-                        componentData.reset();
+
+                        stream.writeBoolean(datum != null);
+                        if (datum != null) {
+                            componentSerializer.serialize(datum);
+                        }
                     }
                 } catch (final IOException e) {
                     throw new SerializationException(e);
@@ -439,7 +434,7 @@ public final class BinarySerialization {
 
         @FunctionalInterface
         private interface ArrayComponentDeserializer {
-            Object deserialize(DataInputStream stream, Class<?> type, @Nullable Object into);
+            Object deserialize(@Nullable Object into);
         }
 
         @SuppressWarnings({"unchecked", "rawtypes"})
@@ -452,10 +447,11 @@ public final class BinarySerialization {
             } else {
                 final ArrayComponentDeserializer componentDeserializer;
                 if (componentType.isArray()) {
-                    componentDeserializer = Deserializer::getArray;
+                    componentDeserializer = c -> getArray(stream, componentType, c);
                 } else {
                     final li.cil.ceres.api.Serializer<?> serializer = Ceres.getSerializer(componentType);
-                    componentDeserializer = (s, t, i) -> serializer.deserialize(new Deserializer(s), (Class) t, i);
+                    final Deserializer visitor = new Deserializer(stream);
+                    componentDeserializer = c -> serializer.deserialize(visitor, (Class) componentType, c);
                 }
 
                 try {
@@ -466,14 +462,11 @@ public final class BinarySerialization {
                     }
 
                     for (int i = 0; i < length; i++) {
-                        final int componentLength = stream.readInt();
-                        if (componentLength == OBJECT_ARRAY_NULL_VALUE) {
+                        if (!stream.readBoolean()) {
                             data[i] = null;
                             continue;
                         }
-                        final byte[] bytes = new byte[componentLength];
-                        stream.readFully(bytes);
-                        data[i] = componentDeserializer.deserialize(new DataInputStream(new ByteArrayInputStream(bytes)), componentType, data[i]);
+                        data[i] = componentDeserializer.deserialize(data[i]);
                     }
                     return data;
                 } catch (final IOException e) {
