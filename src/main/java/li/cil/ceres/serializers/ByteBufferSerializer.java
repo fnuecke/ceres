@@ -26,12 +26,10 @@ public final class ByteBufferSerializer implements Serializer<ByteBuffer> {
         }
         visitor.putInt("mark", mark);
 
+        // NB: read through a duplicate so the source buffer's position is left untouched.
         final byte[] data = new byte[buffer.remaining()];
-        for (int i = 0; i < buffer.remaining(); i++) {
-            data[i] = buffer.get();
-        }
+        buffer.duplicate().get(data);
 
-        buffer.position(pos);
         visitor.putObject("value", byte[].class, data);
     }
 
