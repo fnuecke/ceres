@@ -10,6 +10,7 @@ import org.objectweb.asm.signature.SignatureVisitor;
 import org.objectweb.asm.signature.SignatureWriter;
 import sun.misc.Unsafe;
 
+import javax.annotation.Nullable;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -17,9 +18,11 @@ import java.util.ArrayList;
 import java.util.function.BiFunction;
 
 final class CompiledSerializer {
+    @Nullable
     private static final BiFunction<Class<?>, byte[], Class<?>> DEFINE_ANONYMOUS_CLASS;
 
     static {
+        BiFunction<Class<?>, byte[], Class<?>> defineAnonymousClass = null;
         try {
             final Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
             unsafeField.setAccessible(true);
@@ -28,16 +31,23 @@ final class CompiledSerializer {
             final Object implLookupBase = unsafe.staticFieldBase(implLookupField);
             final long implLookupOffset = unsafe.staticFieldOffset(implLookupField);
             final MethodHandles.Lookup lookup = (MethodHandles.Lookup) unsafe.getObject(implLookupBase, implLookupOffset);
-            DEFINE_ANONYMOUS_CLASS = (parentType, bytecode) -> {
+            defineAnonymousClass = (parentType, bytecode) -> {
                 try {
                     return lookup.in(parentType).defineHiddenClass(bytecode, false, MethodHandles.Lookup.ClassOption.NESTMATE).lookupClass();
                 } catch (final IllegalAccessException ignored) {
                     return null;
                 }
             };
-        } catch (final NoSuchFieldException | IllegalAccessException e) {
-            throw new AssertionError(e);
+        } catch (final Throwable e) {
+            System.getLogger(CompiledSerializer.class.getName()).log(System.Logger.Level.WARNING,
+                    "Serializer code generation is unavailable on this runtime, falling back to reflection. " +
+                    "Serialization will still work, but more slowly.", e);
         }
+        DEFINE_ANONYMOUS_CLASS = defineAnonymousClass;
+    }
+
+    static boolean isSupported() {
+        return DEFINE_ANONYMOUS_CLASS != null;
     }
 
     private static final int SERIALIZER_VISITOR_INDEX = 1;
