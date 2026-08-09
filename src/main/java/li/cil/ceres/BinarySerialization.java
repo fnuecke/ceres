@@ -34,6 +34,12 @@ public final class BinarySerialization {
         }
 
         Ceres.getSerializer(type).serialize(new Serializer(stream), type, value);
+
+        try {
+            stream.flush();
+        } catch (final IOException e) {
+            throw new SerializationException(e);
+        }
     }
 
     public static <T> ByteBuffer serialize(final T value, final Class<T> type) throws SerializationException {
