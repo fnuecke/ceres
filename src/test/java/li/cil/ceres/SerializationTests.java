@@ -259,9 +259,9 @@ public final class SerializationTests {
 
     @Test
     public void testStringArray() {
-        final ByteBuffer serialized = BinarySerialization.serialize(new StringArrayTest());
+        final ByteBuffer serialized = BinarySerialization.serialize(new WithStringArray());
 
-        final StringArrayTest deserialized = BinarySerialization.deserialize(serialized, StringArrayTest.class);
+        final WithStringArray deserialized = BinarySerialization.deserialize(serialized, WithStringArray.class);
 
         assertEquals(deserialized.data[0], "a");
         assertEquals(deserialized.data[1], "b");
@@ -342,8 +342,100 @@ public final class SerializationTests {
         assertThrows(SerializationException.class, () -> BinarySerialization.serialize(value));
     }
 
-    public static final class StringArrayTest {
+    @Test
+    public void testStringArrayWithNulls() {
+        final WithNullableStringArray value = new WithNullableStringArray();
+        value.values = new String[]{"a", null, "c", null};
+
+        final ByteBuffer serialized = assertDoesNotThrow(() -> BinarySerialization.serialize(value));
+
+        final WithNullableStringArray deserialized = assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, WithNullableStringArray.class));
+        assertArrayEquals(value.values, deserialized.values);
+
+        // Deserializing into an existing array must clear elements that were null when serialized.
+        final WithNullableStringArray into = new WithNullableStringArray();
+        into.values = new String[]{"w", "x", "y", "z"};
+        final WithNullableStringArray reused = assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, WithNullableStringArray.class, into));
+        assertArrayEquals(value.values, reused.values);
+    }
+
+    @Test
+    public void testEnumArrayWithNulls() {
+        final WithEnumArray value = new WithEnumArray();
+        value.values = new TestEnum[]{TestEnum.THREE, null, TestEnum.ONE};
+
+        final ByteBuffer serialized = assertDoesNotThrow(() -> BinarySerialization.serialize(value));
+
+        final WithEnumArray deserialized = assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, WithEnumArray.class));
+        assertArrayEquals(value.values, deserialized.values);
+
+        final WithEnumArray into = new WithEnumArray();
+        into.values = new TestEnum[]{TestEnum.TWO, TestEnum.TWO, TestEnum.TWO};
+        final WithEnumArray reused = assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, WithEnumArray.class, into));
+        assertArrayEquals(value.values, reused.values);
+    }
+
+    @Test
+    public void testNullObjectArrayElementsClearExistingValues() {
+        final WithObjectArray value = new WithObjectArray();
+        value.values = new Item[]{null, new Item(), null};
+        value.values[1].v = 7;
+
+        final ByteBuffer serialized = assertDoesNotThrow(() -> BinarySerialization.serialize(value));
+
+        final WithObjectArray into = new WithObjectArray();
+        into.values = new Item[]{new Item(), new Item(), new Item()};
+        into.values[0].v = 99;
+        into.values[1].v = 11;
+        into.values[2].v = 88;
+
+        final WithObjectArray deserialized = assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, WithObjectArray.class, into));
+
+        assertNull(deserialized.values[0]);
+        assertNotNull(deserialized.values[1]);
+        assertEquals(7, deserialized.values[1].v);
+        assertNull(deserialized.values[2]);
+    }
+
+    @Test
+    public void testArrayOfTypeWithoutSerializedFields() {
+        final WithFieldlessArray value = new WithFieldlessArray();
+        value.values = new NoFields[]{new NoFields(), null};
+
+        final ByteBuffer serialized = assertDoesNotThrow(() -> BinarySerialization.serialize(value));
+
+        final WithFieldlessArray deserialized = assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, WithFieldlessArray.class));
+
+        assertNotNull(deserialized.values[0]);
+        assertNull(deserialized.values[1]);
+    }
+
+    public static final class WithStringArray {
         public String[] data = {"a", "b", "c"};
+    }
+
+    @Serialized
+    public static final class WithNullableStringArray {
+        public String[] values = {"a", "b", "c", "d"};
+    }
+
+    @Serialized
+    public static final class Item {
+        public int v;
+    }
+
+    @Serialized
+    public static final class WithObjectArray {
+        public Item[] values = new Item[3];
+    }
+
+    @Serialized
+    public static final class NoFields {
+    }
+
+    @Serialized
+    public static final class WithFieldlessArray {
+        public NoFields[] values = new NoFields[2];
     }
 
     public enum TestEnum {

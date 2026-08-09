@@ -68,6 +68,7 @@ public final class BinarySerialization {
     }
 
     private static final int OBJECT_ARRAY_NULL_VALUE = -1;
+    private static final int ENUM_NULL_VALUE = -1;
     private static final Map<Class<?>, ArraySerializer> ARRAY_SERIALIZERS;
     private static final ArraySerializer ENUM_ARRAY_SERIALIZER = new EnumArraySerializer();
 
@@ -390,7 +391,8 @@ public final class BinarySerialization {
 
                     for (int i = 0; i < length; i++) {
                         final int componentLength = stream.readInt();
-                        if (componentLength <= 0) {
+                        if (componentLength == OBJECT_ARRAY_NULL_VALUE) {
+                            data[i] = null;
                             continue;
                         }
                         final byte[] bytes = new byte[componentLength];
@@ -687,7 +689,9 @@ public final class BinarySerialization {
             try {
                 stream.writeInt(data.length);
                 for (final Enum datum : data) {
-                    stream.writeInt(datum.ordinal());
+                    // Ordinals are never negative, so the sentinel is unambiguous and costs
+                    // nothing for non-null elements.
+                    stream.writeInt(datum == null ? ENUM_NULL_VALUE : datum.ordinal());
                 }
             } catch (final IOException e) {
                 throw new SerializationException(e);
@@ -707,7 +711,10 @@ public final class BinarySerialization {
                 }
 
                 for (int i = 0; i < length; i++) {
-                    data[i] = (Enum) enumConstants[stream.readInt()];
+                    // NB: compare against the sentinel exactly; any other out-of-range ordinal is
+                    // corrupt data and should fail rather than silently deserialize as null.
+                    final int ordinal = stream.readInt();
+                    data[i] = ordinal == ENUM_NULL_VALUE ? null : (Enum) enumConstants[ordinal];
                 }
                 return data;
             } catch (final IOException e) {
@@ -723,7 +730,12 @@ public final class BinarySerialization {
             try {
                 stream.writeInt(data.length);
                 for (final String datum : data) {
-                    stream.writeUTF(datum);
+                    // Unlike enums there is no spare value in the encoding, so nullability needs
+                    // an explicit flag per element.
+                    stream.writeBoolean(datum != null);
+                    if (datum != null) {
+                        stream.writeUTF(datum);
+                    }
                 }
             } catch (final IOException e) {
                 throw new SerializationException(e);
@@ -740,7 +752,7 @@ public final class BinarySerialization {
                 }
 
                 for (int i = 0; i < length; i++) {
-                    data[i] = stream.readUTF();
+                    data[i] = stream.readBoolean() ? stream.readUTF() : null;
                 }
                 return data;
             } catch (final IOException e) {
