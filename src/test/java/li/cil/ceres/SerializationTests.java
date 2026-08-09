@@ -281,8 +281,110 @@ public final class SerializationTests {
         assertArrayEquals(value.array[1], deserialized.array[1]);
     }
 
+    @Test
+    public void testEnumArray() {
+        final WithEnumArray value = new WithEnumArray();
+        value.values = new TestEnum[]{TestEnum.THREE, TestEnum.ONE, TestEnum.TWO};
+
+        final ByteBuffer serialized = assertDoesNotThrow(() -> BinarySerialization.serialize(value));
+
+        final WithEnumArray deserialized = assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, WithEnumArray.class));
+
+        assertArrayEquals(value.values, deserialized.values);
+    }
+
+    @Test
+    public void testEnumArrayAsRootValue() {
+        final TestEnum[] value = {TestEnum.TWO, TestEnum.THREE};
+
+        final ByteBuffer serialized = assertDoesNotThrow(() -> BinarySerialization.serialize(value));
+
+        final TestEnum[] deserialized = assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, TestEnum[].class));
+
+        assertArrayEquals(value, deserialized);
+    }
+
+    @Test
+    public void testEnumArrayWithConstantBodies() {
+        // Constants with bodies are anonymous subclasses, so the element type is not the array's
+        // component type. Serialization must key off the component type, not the value's class.
+        final WithComplexEnum value = new WithComplexEnum();
+        value.values = new TestComplexEnum[]{TestComplexEnum.TIMES, TestComplexEnum.PLUS};
+
+        final ByteBuffer serialized = assertDoesNotThrow(() -> BinarySerialization.serialize(value));
+
+        final WithComplexEnum deserialized = assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, WithComplexEnum.class));
+
+        assertArrayEquals(value.values, deserialized.values);
+        assertEquals(6, deserialized.values[0].apply(3));
+        assertEquals(4, deserialized.values[1].apply(3));
+    }
+
+    @Test
+    public void testMultidimensionalEnumArray() {
+        final WithMultiDimEnum value = new WithMultiDimEnum();
+        value.values = new TestEnum[][]{{TestEnum.THREE, TestEnum.TWO}, {TestEnum.ONE}};
+
+        final ByteBuffer serialized = assertDoesNotThrow(() -> BinarySerialization.serialize(value));
+
+        final WithMultiDimEnum deserialized = assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, WithMultiDimEnum.class));
+
+        assertArrayEquals(value.values[0], deserialized.values[0]);
+        assertArrayEquals(value.values[1], deserialized.values[1]);
+    }
+
+    @Test
+    public void testRawEnumArrayIsRejected() {
+        // An ordinal is only meaningful relative to a known enum type, so this cannot round-trip
+        // and must fail loudly rather than silently discarding the values.
+        final WithRawEnumArray value = new WithRawEnumArray();
+
+        assertThrows(SerializationException.class, () -> BinarySerialization.serialize(value));
+    }
+
     public static final class StringArrayTest {
         public String[] data = {"a", "b", "c"};
+    }
+
+    public enum TestEnum {
+        ONE, TWO, THREE
+    }
+
+    public enum TestComplexEnum {
+        PLUS {
+            @Override
+            public int apply(final int x) {
+                return x + 1;
+            }
+        },
+        TIMES {
+            @Override
+            public int apply(final int x) {
+                return x * 2;
+            }
+        };
+
+        public abstract int apply(int x);
+    }
+
+    @Serialized
+    public static final class WithEnumArray {
+        public TestEnum[] values = {TestEnum.ONE, TestEnum.ONE, TestEnum.ONE};
+    }
+
+    @Serialized
+    public static final class WithComplexEnum {
+        public TestComplexEnum[] values = {TestComplexEnum.PLUS, TestComplexEnum.PLUS};
+    }
+
+    @Serialized
+    public static final class WithMultiDimEnum {
+        public TestEnum[][] values = {{TestEnum.ONE}, {TestEnum.ONE}};
+    }
+
+    @Serialized
+    public static final class WithRawEnumArray {
+        public Enum<?>[] values = {TestEnum.ONE};
     }
 
     @Serialized

@@ -69,6 +69,7 @@ public final class BinarySerialization {
 
     private static final int OBJECT_ARRAY_NULL_VALUE = -1;
     private static final Map<Class<?>, ArraySerializer> ARRAY_SERIALIZERS;
+    private static final ArraySerializer ENUM_ARRAY_SERIALIZER = new EnumArraySerializer();
 
     static {
         ARRAY_SERIALIZERS = new HashMap<>();
@@ -80,8 +81,22 @@ public final class BinarySerialization {
         ARRAY_SERIALIZERS.put(long.class, new LongArraySerializer());
         ARRAY_SERIALIZERS.put(float.class, new FloatArraySerializer());
         ARRAY_SERIALIZERS.put(double.class, new DoubleArraySerializer());
-        ARRAY_SERIALIZERS.put(Enum.class, new EnumArraySerializer());
         ARRAY_SERIALIZERS.put(String.class, new StringArraySerializer());
+    }
+
+    @Nullable
+    private static ArraySerializer getArraySerializer(final Class<?> componentType) {
+        if (componentType.isEnum()) {
+            return ENUM_ARRAY_SERIALIZER;
+        }
+
+        if (Enum.class.isAssignableFrom(componentType)) {
+            throw new SerializationException(String.format(
+                    "Cannot serialize arrays with abstract enum component type [%s]. Use a concrete enum type.",
+                    componentType.getName()));
+        }
+
+        return ARRAY_SERIALIZERS.get(componentType);
     }
 
     private static final class Serializer implements SerializationVisitor {
@@ -206,7 +221,7 @@ public final class BinarySerialization {
         private static void putArray(final DataOutputStream stream, final String name, final Class<?> type, final Object value) {
             final Class<?> componentType = type.getComponentType();
 
-            final ArraySerializer arraySerializer = ARRAY_SERIALIZERS.get(componentType);
+            final ArraySerializer arraySerializer = getArraySerializer(componentType);
             if (arraySerializer != null) {
                 arraySerializer.serialize(stream, value);
             } else {
@@ -354,7 +369,7 @@ public final class BinarySerialization {
         private static Object getArray(final DataInputStream stream, final Class<?> type, @Nullable final Object into) {
             final Class<?> componentType = type.getComponentType();
 
-            final ArraySerializer arraySerializer = ARRAY_SERIALIZERS.get(componentType);
+            final ArraySerializer arraySerializer = getArraySerializer(componentType);
             if (arraySerializer != null) {
                 return arraySerializer.deserialize(stream, type, into);
             } else {
