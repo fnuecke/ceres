@@ -59,4 +59,17 @@ publishing {
 
 test {
     useJUnitPlatform()
+    systemProperty 'li.cil.ceres.disableCodeGen', 'false'
 }
+
+tasks.register('testReflection', Test) {
+    description = 'reflection-based serializer tests'
+    group = 'verification'
+
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    systemProperty 'li.cil.ceres.disableCodeGen', 'true'
+}
+
+check.dependsOn tasks.named('testReflection')
