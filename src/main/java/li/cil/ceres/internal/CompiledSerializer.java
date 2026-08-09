@@ -15,39 +15,52 @@ import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.function.BiFunction;
 
 final class CompiledSerializer {
-    @Nullable
-    private static final BiFunction<Class<?>, byte[], Class<?>> DEFINE_ANONYMOUS_CLASS;
+    private static final class LegacyLookup {
+        @Nullable
+        static final MethodHandles.Lookup INSTANCE = get();
 
-    static {
-        BiFunction<Class<?>, byte[], Class<?>> defineAnonymousClass = null;
-        try {
-            final Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
-            unsafeField.setAccessible(true);
-            final Unsafe unsafe = (Unsafe) unsafeField.get(null);
-            final Field implLookupField = MethodHandles.Lookup.class.getDeclaredField("IMPL_LOOKUP");
-            final Object implLookupBase = unsafe.staticFieldBase(implLookupField);
-            final long implLookupOffset = unsafe.staticFieldOffset(implLookupField);
-            final MethodHandles.Lookup lookup = (MethodHandles.Lookup) unsafe.getObject(implLookupBase, implLookupOffset);
-            defineAnonymousClass = (parentType, bytecode) -> {
-                try {
-                    return lookup.in(parentType).defineHiddenClass(bytecode, false, MethodHandles.Lookup.ClassOption.NESTMATE).lookupClass();
-                } catch (final IllegalAccessException ignored) {
-                    return null;
-                }
-            };
-        } catch (final Throwable e) {
-            System.getLogger(CompiledSerializer.class.getName()).log(System.Logger.Level.WARNING,
-                    "Serializer code generation is unavailable on this runtime, falling back to reflection. " +
-                    "Serialization will still work, but more slowly.", e);
+        @Nullable
+        private static MethodHandles.Lookup get() {
+            try {
+                final Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
+                unsafeField.setAccessible(true);
+                final Unsafe unsafe = (Unsafe) unsafeField.get(null);
+                final Field implLookupField = MethodHandles.Lookup.class.getDeclaredField("IMPL_LOOKUP");
+                final Object implLookupBase = unsafe.staticFieldBase(implLookupField);
+                final long implLookupOffset = unsafe.staticFieldOffset(implLookupField);
+                return (MethodHandles.Lookup) unsafe.getObject(implLookupBase, implLookupOffset);
+            } catch (final Throwable e) {
+                System.getLogger(CompiledSerializer.class.getName()).log(System.Logger.Level.DEBUG,
+                        "Could not obtain the trusted lookup. Types whose package is not open to us " +
+                        "will use reflection-based serializers.", e);
+                return null;
+            }
         }
-        DEFINE_ANONYMOUS_CLASS = defineAnonymousClass;
     }
 
-    static boolean isSupported() {
-        return DEFINE_ANONYMOUS_CLASS != null;
+    @Nullable
+    private static Class<?> defineHiddenClass(final Class<?> parentType, final byte[] bytecode) {
+        try {
+            return MethodHandles.privateLookupIn(parentType, MethodHandles.lookup())
+                    .defineHiddenClass(bytecode, false, MethodHandles.Lookup.ClassOption.NESTMATE)
+                    .lookupClass();
+        } catch (final IllegalAccessException ignored) {
+            // Fall through to the legacy lookup.
+        }
+
+        final MethodHandles.Lookup trustedLookup = LegacyLookup.INSTANCE;
+        if (trustedLookup != null) {
+            try {
+                return trustedLookup.in(parentType)
+                        .defineHiddenClass(bytecode, false, MethodHandles.Lookup.ClassOption.NESTMATE)
+                        .lookupClass();
+            } catch (final IllegalAccessException ignored) {
+            }
+        }
+
+        return null;
     }
 
     private static boolean canGenerateFor(final Class<?> type) {
@@ -155,7 +168,7 @@ final class CompiledSerializer {
         cw.visitEnd();
 
         try {
-            final Class<Serializer<T>> serializerClass = (Class<Serializer<T>>) DEFINE_ANONYMOUS_CLASS.apply(type, cw.toByteArray());
+            final Class<Serializer<T>> serializerClass = (Class<Serializer<T>>) defineHiddenClass(type, cw.toByteArray());
             if (serializerClass == null) {
                 return fallBackToReflection(type);
             }
