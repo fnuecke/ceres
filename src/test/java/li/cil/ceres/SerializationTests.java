@@ -5,6 +5,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.UUID;
@@ -408,6 +409,12 @@ public final class SerializationTests {
 
         assertNotNull(deserialized.values[0]);
         assertNull(deserialized.values[1]);
+    }
+
+    @Test
+    public void testTypeInUnreadableModule() {
+        // Class we cannot inject a serializer into, test it doesn't fail/falls back to reflection.
+        assertDoesNotThrow(() -> Ceres.getSerializer(ArrayList.class));
     }
 
     public static final class WithStringArray {

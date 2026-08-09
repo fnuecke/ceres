@@ -50,6 +50,14 @@ final class CompiledSerializer {
         return DEFINE_ANONYMOUS_CLASS != null;
     }
 
+    private static boolean canGenerateFor(final Class<?> type) {
+        return type.getModule().canRead(CompiledSerializer.class.getModule());
+    }
+
+    private static <T> Serializer<T> fallBackToReflection(final Class<T> type) {
+        return ReflectionSerializer.generateSerializer(type);
+    }
+
     private static final int SERIALIZER_VISITOR_INDEX = 1;
     private static final int SERIALIZER_VALUE_INDEX = 3;
     private static final int SERIALIZER_FIELD_VALUE_INDEX = 4;
@@ -60,6 +68,10 @@ final class CompiledSerializer {
     public static <T> Serializer<T> generateSerializer(final Class<T> type) throws SerializationException {
         if (type.isInterface()) {
             throw new SerializationException(String.format("Cannot generate serializer for interface [%s].", type));
+        }
+
+        if (!canGenerateFor(type)) {
+            return fallBackToReflection(type);
         }
 
         final ArrayList<Field> fields = SerializerUtils.collectSerializableFields(type);
@@ -144,6 +156,9 @@ final class CompiledSerializer {
 
         try {
             final Class<Serializer<T>> serializerClass = (Class<Serializer<T>>) DEFINE_ANONYMOUS_CLASS.apply(type, cw.toByteArray());
+            if (serializerClass == null) {
+                return fallBackToReflection(type);
+            }
             return serializerClass.getDeclaredConstructor().newInstance();
         } catch (final Throwable e) {
             throw new SerializationException(String.format("Failed generating serializer for type [%s]", type), e);
