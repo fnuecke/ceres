@@ -6,6 +6,7 @@ import java.nio.ByteBuffer;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public final class ByteBufferSerializationTests {
@@ -94,6 +95,49 @@ public final class ByteBufferSerializationTests {
         assertEquals(1024, buffer.limit());
     }
 
+    @Test
+    public void contentBeforePositionIsSerializedCorrectly() {
+        final ByteBuffer buffer = ByteBuffer.allocate(1024);
+        for (int i = 0; i < 500; i++) {
+            buffer.put((byte) (i + 1));
+        }
+
+        final ByteBuffer deserialized = BinarySerialization.deserialize(BinarySerialization.serialize(buffer, ByteBuffer.class), ByteBuffer.class);
+
+        assertEquals(500, deserialized.position());
+        assertEquals(1024, deserialized.limit());
+        assertArrayEquals(backingStore(buffer), backingStore(deserialized));
+    }
+
+    @Test
+    public void contentOutsideLimitIsSerializedCorrectly() {
+        final ByteBuffer buffer = ByteBuffer.allocate(1024);
+        fill(buffer);
+        buffer.clear();
+        buffer.limit(0);
+
+        final ByteBuffer deserialized = BinarySerialization.deserialize(BinarySerialization.serialize(buffer, ByteBuffer.class), ByteBuffer.class);
+
+        assertEquals(1024, deserialized.capacity());
+        assertEquals(0, deserialized.position());
+        assertEquals(0, deserialized.limit());
+        assertArrayEquals(backingStore(buffer), backingStore(deserialized));
+    }
+
+    @Test
+    public void deserializingIntoExistingBufferRestoresFullBackingStore() {
+        final ByteBuffer buffer = ByteBuffer.allocate(1024);
+        fill(buffer);
+        buffer.position(42);
+
+        final ByteBuffer into = ByteBuffer.allocate(1024);
+        final ByteBuffer deserialized = BinarySerialization.deserialize(BinarySerialization.serialize(buffer, ByteBuffer.class), ByteBuffer.class, into);
+
+        assertSame(into, deserialized);
+        assertEquals(42, deserialized.position());
+        assertArrayEquals(backingStore(buffer), backingStore(deserialized));
+    }
+
     private static void fill(final ByteBuffer buffer) {
         for (int i = 0; i < buffer.capacity(); i++) {
             buffer.put((byte) (i + 1));
@@ -103,6 +147,12 @@ public final class ByteBufferSerializationTests {
     private static byte[] remaining(final ByteBuffer buffer) {
         final byte[] data = new byte[buffer.remaining()];
         buffer.duplicate().get(data);
+        return data;
+    }
+
+    private static byte[] backingStore(final ByteBuffer buffer) {
+        final byte[] data = new byte[buffer.capacity()];
+        buffer.duplicate().clear().get(data);
         return data;
     }
 }

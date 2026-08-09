@@ -10,25 +10,29 @@ import java.nio.ByteBuffer;
 import java.nio.InvalidMarkException;
 
 public final class ByteBufferSerializer implements Serializer<ByteBuffer> {
+    private static final int NO_MARK = -1;
+
     @Override
     public void serialize(final SerializationVisitor visitor, final Class<ByteBuffer> type, final Object value) throws SerializationException {
         final ByteBuffer buffer = (ByteBuffer) value;
+
         visitor.putInt("capacity", buffer.capacity());
         visitor.putInt("position", buffer.position());
         visitor.putInt("limit", buffer.limit());
-        final int pos = buffer.position();
-        int mark = -1;
+
+        final ByteBuffer view = buffer.duplicate();
+
+        int mark = NO_MARK;
         try {
-            buffer.reset();
-            mark = buffer.position();
-            buffer.position(pos);
+            view.reset();
+            mark = view.position();
         } catch (final InvalidMarkException ignored) {
         }
         visitor.putInt("mark", mark);
 
-        // NB: read through a duplicate so the source buffer's position is left untouched.
-        final byte[] data = new byte[buffer.remaining()];
-        buffer.duplicate().get(data);
+        final byte[] data = new byte[buffer.capacity()];
+        view.clear();
+        view.get(data);
 
         visitor.putObject("value", byte[].class, data);
     }
@@ -58,14 +62,13 @@ public final class ByteBufferSerializer implements Serializer<ByteBuffer> {
         }
 
         buffer.clear();
+        buffer.put(data);
 
-        if (mark >= 0) {
+        buffer.clear();
+        if (mark != NO_MARK) {
             buffer.position(mark);
             buffer.mark();
         }
-
-        buffer.position(position);
-        buffer.put(data);
         buffer.position(position);
         buffer.limit(limit);
 
