@@ -502,6 +502,57 @@ public final class SerializationTests {
         assertThrows(SerializationException.class, () -> BinarySerialization.deserialize(ByteBuffer.wrap(data), FlatFields.class));
     }
 
+    @Test
+    public void testDeserializeFromDirectBuffer() {
+        final ByteBuffer heap = serializedFlatFields();
+        final ByteBuffer direct = ByteBuffer.allocateDirect(heap.remaining());
+        direct.put(heap.duplicate()).flip();
+
+        final FlatFields deserialized = assertDoesNotThrow(() -> BinarySerialization.deserialize(direct, FlatFields.class));
+
+        assertEquals(123, deserialized.value1);
+    }
+
+    @Test
+    public void testDeserializeFromReadOnlyBuffer() {
+        final ByteBuffer readOnly = serializedFlatFields().asReadOnlyBuffer();
+
+        final FlatFields deserialized = assertDoesNotThrow(() -> BinarySerialization.deserialize(readOnly, FlatFields.class));
+
+        assertEquals(123, deserialized.value1);
+    }
+
+    @Test
+    public void testDeserializeRespectsBufferPosition() {
+        final ByteBuffer serialized = serializedFlatFields();
+        final ByteBuffer padded = ByteBuffer.allocate(serialized.remaining() + 7);
+        padded.position(7);
+        padded.put(serialized.duplicate());
+        padded.position(7);
+
+        final FlatFields fromPadded = assertDoesNotThrow(() -> BinarySerialization.deserialize(padded, FlatFields.class));
+        assertEquals(123, fromPadded.value1);
+
+        final FlatFields fromSlice = assertDoesNotThrow(() -> BinarySerialization.deserialize(padded.slice(), FlatFields.class));
+        assertEquals(123, fromSlice.value1);
+    }
+
+    @Test
+    public void testDeserializeDoesNotConsumeSourceBuffer() {
+        final ByteBuffer serialized = serializedFlatFields();
+        final int position = serialized.position();
+
+        assertDoesNotThrow(() -> BinarySerialization.deserialize(serialized, FlatFields.class));
+
+        assertEquals(position, serialized.position(), "the caller's buffer must be left untouched");
+    }
+
+    private static ByteBuffer serializedFlatFields() {
+        final FlatFields value = new FlatFields();
+        value.value1 = 123;
+        return BinarySerialization.serialize(value);
+    }
+
     public static final class WithStringArray {
         public String[] data = {"a", "b", "c"};
     }

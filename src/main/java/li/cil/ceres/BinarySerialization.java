@@ -89,15 +89,48 @@ public final class BinarySerialization {
     }
 
     public static <T> T deserialize(final ByteBuffer data, final Class<T> type, @Nullable final T into) throws SerializationException {
-        return deserialize(new DataInputStream(new ByteArrayInputStream(data.array())), type, into);
+        return deserialize(toStream(data), type, into);
     }
 
     public static <T> T deserialize(final ByteBuffer data, final Class<T> type) throws SerializationException {
-        return deserialize(new DataInputStream(new ByteArrayInputStream(data.array())), type, null);
+        return deserialize(toStream(data), type, null);
     }
 
     public static <T> T deserialize(final ByteBuffer data, final T into) throws SerializationException {
-        return deserialize(new DataInputStream(new ByteArrayInputStream(data.array())), into);
+        return deserialize(toStream(data), into);
+    }
+
+    private static DataInputStream toStream(final ByteBuffer data) {
+        return new DataInputStream(new ByteBufferInputStream(data.duplicate()));
+    }
+
+    private static final class ByteBufferInputStream extends InputStream {
+        private final ByteBuffer buffer;
+
+        ByteBufferInputStream(final ByteBuffer buffer) {
+            this.buffer = buffer;
+        }
+
+        @Override
+        public int read() {
+            return buffer.hasRemaining() ? buffer.get() & 0xFF : -1;
+        }
+
+        @Override
+        public int read(final byte[] destination, final int offset, final int length) {
+            if (!buffer.hasRemaining()) {
+                return length == 0 ? 0 : -1;
+            }
+
+            final int count = Math.min(length, buffer.remaining());
+            buffer.get(destination, offset, count);
+            return count;
+        }
+
+        @Override
+        public int available() {
+            return buffer.remaining();
+        }
     }
 
     private static final int OBJECT_ARRAY_NULL_VALUE = -1;
