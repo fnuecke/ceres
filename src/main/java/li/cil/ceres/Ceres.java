@@ -3,14 +3,24 @@ package li.cil.ceres;
 import li.cil.ceres.api.*;
 import li.cil.ceres.internal.SerializerFactory;
 import li.cil.ceres.serializers.ArraySerializer;
+import li.cil.ceres.serializers.AtomicBooleanSerializer;
+import li.cil.ceres.serializers.AtomicIntegerArraySerializer;
+import li.cil.ceres.serializers.AtomicIntegerSerializer;
+import li.cil.ceres.serializers.AtomicLongArraySerializer;
+import li.cil.ceres.serializers.AtomicLongSerializer;
 import li.cil.ceres.serializers.ByteBufferSerializer;
 import li.cil.ceres.serializers.UUIDSerializer;
 
 import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerArray;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicLongArray;
 
 /**
  * Ceres is a simplistic serialization framework.
@@ -62,6 +72,11 @@ public final class Ceres {
 
         isInitialized = true;
 
+        putSerializer(AtomicBoolean.class, AtomicBooleanSerializer.INSTANCE);
+        putSerializer(AtomicInteger.class, AtomicIntegerSerializer.INSTANCE);
+        putSerializer(AtomicIntegerArray.class, AtomicIntegerArraySerializer.INSTANCE);
+        putSerializer(AtomicLong.class, AtomicLongSerializer.INSTANCE);
+        putSerializer(AtomicLongArray.class, AtomicLongArraySerializer.INSTANCE);
         putSerializer(ByteBuffer.class, new ByteBufferSerializer());
         putSerializer(UUID.class, new UUIDSerializer());
     }
