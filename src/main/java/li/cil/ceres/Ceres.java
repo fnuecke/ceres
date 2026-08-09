@@ -8,8 +8,8 @@ import li.cil.ceres.serializers.UUIDSerializer;
 
 import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.UUID;
 
 /**
@@ -46,7 +46,9 @@ import java.util.UUID;
  * of the serialized value to know the type the serialized data applies to during deserialization.
  */
 public final class Ceres {
-    private static final Map<Class<?>, Serializer<?>> SERIALIZERS = new HashMap<>();
+    private static final Map<Class<?>, Serializer<?>> SERIALIZERS = new ConcurrentHashMap<>();
+    private static final Object GENERATION_LOCK = new Object();
+
     private static boolean isInitialized = false;
 
     static {
@@ -95,27 +97,33 @@ public final class Ceres {
     @SuppressWarnings("unchecked")
     @Nullable
     public static <T> Serializer<T> getSerializer(final Class<T> type, final boolean generateMissing) throws SerializationException {
-        synchronized (SERIALIZERS) {
-            if (SERIALIZERS.containsKey(type)) {
-                return (Serializer<T>) SERIALIZERS.get(type);
-            }
-
-            // NB: this is only relevant for root object array serialization. Whenever arrays
-            // are part of a to-be-serialized object serializers will directly call the put-
-            // and getArray methods on visitors.
-            if (type.isArray()) {
-                SERIALIZERS.put(type, ArraySerializer.INSTANCE);
-                return ArraySerializer.INSTANCE;
-            }
-
-            if (generateMissing) {
-                final Serializer<T> serializer = SerializerFactory.generateSerializer(type);
-                SERIALIZERS.put(type, serializer);
-                return serializer;
-            }
+        final Serializer<?> existing = SERIALIZERS.get(type);
+        if (existing != null) {
+            return (Serializer<T>) existing;
         }
 
-        return null;
+        // NB: this is only relevant for root object array serialization. Whenever arrays
+        // are part of a to-be-serialized object serializers will directly call the put-
+        // and getArray methods on visitors.
+        if (type.isArray()) {
+            final Serializer<?> previous = SERIALIZERS.putIfAbsent(type, ArraySerializer.INSTANCE);
+            return (Serializer<T>) (previous != null ? previous : ArraySerializer.INSTANCE);
+        }
+
+        if (!generateMissing) {
+            return null;
+        }
+
+        synchronized (GENERATION_LOCK) {
+            final Serializer<?> current = SERIALIZERS.get(type);
+            if (current != null) {
+                return (Serializer<T>) current;
+            }
+
+            final Serializer<T> serializer = SerializerFactory.generateSerializer(type);
+            SERIALIZERS.put(type, serializer);
+            return serializer;
+        }
     }
 
     /**
@@ -130,7 +138,7 @@ public final class Ceres {
      * @param serializer the serializer to assign to {@code type}.
      */
     public static <T> void putSerializer(final Class<T> type, @Nullable final Serializer<T> serializer) {
-        synchronized (SERIALIZERS) {
+        synchronized (GENERATION_LOCK) {
             if (serializer != null) {
                 SERIALIZERS.put(type, serializer);
             } else {
