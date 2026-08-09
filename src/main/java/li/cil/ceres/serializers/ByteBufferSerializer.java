@@ -7,6 +7,7 @@ import li.cil.ceres.api.Serializer;
 
 import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.InvalidMarkException;
 
 public final class ByteBufferSerializer implements Serializer<ByteBuffer> {
@@ -29,6 +30,7 @@ public final class ByteBufferSerializer implements Serializer<ByteBuffer> {
         } catch (final InvalidMarkException ignored) {
         }
         visitor.putInt("mark", mark);
+        visitor.putBoolean("bigEndian", buffer.order() == ByteOrder.BIG_ENDIAN);
 
         final byte[] data = new byte[buffer.capacity()];
         view.clear();
@@ -44,6 +46,7 @@ public final class ByteBufferSerializer implements Serializer<ByteBuffer> {
             !visitor.exists("position") ||
             !visitor.exists("limit") ||
             !visitor.exists("mark") ||
+            !visitor.exists("bigEndian") ||
             !visitor.exists("value")) {
             return buffer;
         }
@@ -52,6 +55,7 @@ public final class ByteBufferSerializer implements Serializer<ByteBuffer> {
         final int position = visitor.getInt("position");
         final int limit = visitor.getInt("limit");
         final int mark = visitor.getInt("mark");
+        final ByteOrder order = visitor.getBoolean("bigEndian") ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN;
         final byte[] data = (byte[]) visitor.getObject("value", byte[].class, null);
         if (data == null) {
             return null;
@@ -61,6 +65,7 @@ public final class ByteBufferSerializer implements Serializer<ByteBuffer> {
             buffer = ByteBuffer.allocate(capacity);
         }
 
+        buffer.order(order);
         buffer.clear();
         buffer.put(data);
 

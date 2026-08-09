@@ -3,6 +3,7 @@ package li.cil.ceres;
 import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -136,6 +137,43 @@ public final class ByteBufferSerializationTests {
         assertSame(into, deserialized);
         assertEquals(42, deserialized.position());
         assertArrayEquals(backingStore(buffer), backingStore(deserialized));
+    }
+
+    @Test
+    public void byteOrderIsSerializedCorrectly() {
+        final ByteBuffer buffer = ByteBuffer.allocate(1024);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
+        buffer.putInt(0x01020304);
+
+        final ByteBuffer deserialized = BinarySerialization.deserialize(BinarySerialization.serialize(buffer, ByteBuffer.class), ByteBuffer.class);
+
+        assertEquals(ByteOrder.LITTLE_ENDIAN, deserialized.order());
+        assertEquals(0x01020304, deserialized.getInt(0), "value reads back identically");
+        assertArrayEquals(backingStore(buffer), backingStore(deserialized));
+    }
+
+    @Test
+    public void defaultByteOrderIsSerializedCorrectly() {
+        final ByteBuffer buffer = ByteBuffer.allocate(1024);
+        fill(buffer);
+
+        final ByteBuffer deserialized = BinarySerialization.deserialize(BinarySerialization.serialize(buffer, ByteBuffer.class), ByteBuffer.class);
+
+        assertEquals(ByteOrder.BIG_ENDIAN, deserialized.order());
+    }
+
+    @Test
+    public void byteOrderIsRestoredIntoExistingBuffer() {
+        final ByteBuffer buffer = ByteBuffer.allocate(1024);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
+
+        final ByteBuffer into = ByteBuffer.allocate(1024);
+        into.order(ByteOrder.BIG_ENDIAN);
+
+        final ByteBuffer deserialized = BinarySerialization.deserialize(BinarySerialization.serialize(buffer, ByteBuffer.class), ByteBuffer.class, into);
+
+        assertSame(into, deserialized);
+        assertEquals(ByteOrder.LITTLE_ENDIAN, deserialized.order());
     }
 
     private static void fill(final ByteBuffer buffer) {
