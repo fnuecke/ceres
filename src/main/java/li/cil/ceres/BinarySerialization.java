@@ -22,7 +22,17 @@ import java.util.Map;
  * define the structure of the serialized data.
  */
 public final class BinarySerialization {
+    private static final int MAGIC = 0x43455245; // "CERE"
+    private static final int VERSION = 1;
+
     public static <T> void serialize(final DataOutputStream stream, final T value, final Class<T> type) throws SerializationException {
+        try {
+            stream.writeInt(MAGIC);
+            stream.writeInt(VERSION);
+        } catch (final IOException e) {
+            throw new SerializationException(e);
+        }
+
         Ceres.getSerializer(type).serialize(new Serializer(stream), type, value);
     }
 
@@ -43,6 +53,23 @@ public final class BinarySerialization {
     }
 
     public static <T> T deserialize(final DataInputStream stream, final Class<T> type, @Nullable final T into) throws SerializationException {
+        final int magic, version;
+        try {
+            magic = stream.readInt();
+            version = stream.readInt();
+        } catch (final IOException e) {
+            throw new SerializationException("Failed reading format header.", e);
+        }
+
+        if (magic != MAGIC) {
+            throw new SerializationException("Data is has bad binary format.");
+        }
+        if (version != VERSION) {
+            throw new SerializationException(String.format(
+                    "Unsupported binary format version [%d], expected [%d].",
+                    version, VERSION));
+        }
+
         return Ceres.getSerializer(type).deserialize(new Deserializer(stream), type, into);
     }
 

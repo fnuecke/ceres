@@ -8,6 +8,7 @@ import li.cil.ceres.api.Serializer;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Comparator;
 
 final class SerializerUtils {
     static ArrayList<Field> collectSerializableFields(final Class<?> type) throws SerializationException {
@@ -54,6 +55,11 @@ final class SerializerUtils {
                 fields.add(field);
             }
         }
+
+        // Must be stable, can't rely on getDeclaredFields for this (explicitly makes no such
+        // guarantee). But serializers may require this, e.g. our built-in binary one.
+        fields.sort(Comparator.comparing(Field::getName));
+
         return fields;
     }
 

@@ -4,6 +4,9 @@ import li.cil.ceres.api.*;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -417,8 +420,59 @@ public final class SerializationTests {
         assertDoesNotThrow(() -> Ceres.getSerializer(ArrayList.class));
     }
 
+    @Test
+    public void testFieldOrderIsDeterministic() throws IOException {
+        final WithUnsortedFields value = new WithUnsortedFields();
+        value.zebra = 11;
+        value.alpha = 22;
+        value.middle = 33;
+
+        final ByteBuffer serialized = assertDoesNotThrow(() -> BinarySerialization.serialize(value));
+
+        final DataInputStream stream = new DataInputStream(new ByteArrayInputStream(serialized.array()));
+        stream.readInt(); // format magic
+        stream.readInt(); // format version
+
+        assertEquals(22, stream.readInt(), "alpha is serialized first");
+        assertEquals(33, stream.readInt(), "then middle");
+        assertEquals(11, stream.readInt(), "then zebra");
+    }
+
+    @Test
+    public void testDataWithoutFormatHeaderIsRejected() {
+        final ByteBuffer notCeresData = ByteBuffer.wrap(new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
+
+        assertThrows(SerializationException.class, () -> BinarySerialization.deserialize(notCeresData, FlatFields.class));
+    }
+
+    @Test
+    public void testTruncatedDataIsRejected() {
+        final ByteBuffer truncated = ByteBuffer.wrap(new byte[]{1, 2});
+
+        assertThrows(SerializationException.class, () -> BinarySerialization.deserialize(truncated, FlatFields.class));
+    }
+
+    @Test
+    public void testUnsupportedFormatVersionIsRejected() {
+        final FlatFields value = new FlatFields();
+        value.value1 = 123;
+
+        final byte[] data = assertDoesNotThrow(() -> BinarySerialization.serialize(value)).array().clone();
+        // The version immediately follows the magic, so this is its least significant byte.
+        data[7] = (byte) 99;
+
+        assertThrows(SerializationException.class, () -> BinarySerialization.deserialize(ByteBuffer.wrap(data), FlatFields.class));
+    }
+
     public static final class WithStringArray {
         public String[] data = {"a", "b", "c"};
+    }
+
+    @Serialized
+    public static final class WithUnsortedFields {
+        public int zebra;
+        public int alpha;
+        public int middle;
     }
 
     @Serialized
