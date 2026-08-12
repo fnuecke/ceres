@@ -1,0 +1,35 @@
+name: report
+
+on:
+  workflow_run:
+    workflows: [ build ]
+    types: [ completed ]
+
+permissions:
+  actions: read
+  checks: write
+  contents: read
+
+run-name: Test results for last build of ${{ github.event.workflow_run.head_branch }}
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Test Results
+        id: download
+        uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: junit-test-results
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Publish Test Results
+        if: steps.download.outcome == 'success'
+        uses: mikepenz/action-junit-report@v6
+        with:
+          commit: ${{ github.event.workflow_run.head_sha }}
+          report_paths: '**/TEST-*.xml'
+          include_passed: true
