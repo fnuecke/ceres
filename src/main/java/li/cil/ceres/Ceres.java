@@ -2,25 +2,14 @@ package li.cil.ceres;
 
 import li.cil.ceres.api.*;
 import li.cil.ceres.internal.SerializerFactory;
-import li.cil.ceres.serializers.ArraySerializer;
-import li.cil.ceres.serializers.AtomicBooleanSerializer;
-import li.cil.ceres.serializers.AtomicIntegerArraySerializer;
-import li.cil.ceres.serializers.AtomicIntegerSerializer;
-import li.cil.ceres.serializers.AtomicLongArraySerializer;
-import li.cil.ceres.serializers.AtomicLongSerializer;
-import li.cil.ceres.serializers.ByteBufferSerializer;
-import li.cil.ceres.serializers.UUIDSerializer;
+import li.cil.ceres.serializers.*;
 
 import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicIntegerArray;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicLongArray;
+import java.util.concurrent.atomic.*;
 
 /**
  * Ceres is a simplistic serialization framework.

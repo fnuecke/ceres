@@ -34,7 +34,7 @@ final class CompiledSerializer {
             } catch (final Throwable e) {
                 System.getLogger(CompiledSerializer.class.getName()).log(System.Logger.Level.DEBUG,
                         "Could not obtain the trusted lookup. Types whose package is not open to us " +
-                        "will use reflection-based serializers.", e);
+                                "will use reflection-based serializers.", e);
                 return null;
             }
         }

@@ -649,16 +649,16 @@ public final class SerializationTests {
             if (o == null || getClass() != o.getClass()) return false;
             final Flat flat = (Flat) o;
             return byteValue == flat.byteValue &&
-                   shortValue == flat.shortValue &&
-                   intValue == flat.intValue &&
-                   longValue == flat.longValue &&
-                   Float.compare(flat.floatValue, floatValue) == 0 &&
-                   Double.compare(flat.doubleValue, doubleValue) == 0 &&
-                   Arrays.equals(byteArrayValue, flat.byteArrayValue) &&
-                   Arrays.equals(intArrayValue, flat.intArrayValue) &&
-                   Arrays.equals(longArrayValue, flat.longArrayValue) &&
-                   Objects.equals(stringValue, flat.stringValue) &&
-                   Objects.equals(uuidValue, flat.uuidValue);
+                    shortValue == flat.shortValue &&
+                    intValue == flat.intValue &&
+                    longValue == flat.longValue &&
+                    Float.compare(flat.floatValue, floatValue) == 0 &&
+                    Double.compare(flat.doubleValue, doubleValue) == 0 &&
+                    Arrays.equals(byteArrayValue, flat.byteArrayValue) &&
+                    Arrays.equals(intArrayValue, flat.intArrayValue) &&
+                    Arrays.equals(longArrayValue, flat.longArrayValue) &&
+                    Objects.equals(stringValue, flat.stringValue) &&
+                    Objects.equals(uuidValue, flat.uuidValue);
         }
 
         @Override
@@ -672,7 +672,8 @@ public final class SerializationTests {
     }
 
     public static final class FlatFields {
-        @Serialized private int value1;
+        @Serialized
+        private int value1;
         private int value2;
     }
 
@@ -685,7 +686,8 @@ public final class SerializationTests {
     }
 
     public static final class SerializeFinalPrimitive {
-        @Serialized private final int finalInt = 23;
+        @Serialized
+        private final int finalInt = 23;
     }
 
     public static final class SerializeFinalEnum {
@@ -693,11 +695,13 @@ public final class SerializationTests {
             A, B
         }
 
-        @Serialized private final TestEnum finalEnum = TestEnum.B;
+        @Serialized
+        private final TestEnum finalEnum = TestEnum.B;
     }
 
     public static final class SerializeFinalImmutableObject {
-        @Serialized private final ImmutableClass finalValue = new ImmutableClass();
+        @Serialized
+        private final ImmutableClass finalValue = new ImmutableClass();
 
         @Serialized
         public static final class ImmutableClass {
@@ -706,7 +710,8 @@ public final class SerializationTests {
     }
 
     public static final class SerializedStaticFields {
-        @Serialized public static int s = 123;
+        @Serialized
+        public static int s = 123;
     }
 
     @Serialized
@@ -772,31 +777,38 @@ public final class SerializationTests {
     }
 
     public static final class MutableIndirect {
-        @Serialized public int v;
+        @Serialized
+        public int v;
     }
 
     public static final class MutableIndirectMid {
-        @Serialized public final MutableIndirect v = null;
+        @Serialized
+        public final MutableIndirect v = null;
     }
 
     public static final class MutableIndirectRoot {
-        @Serialized public final MutableIndirectMid v = null;
+        @Serialized
+        public final MutableIndirectMid v = null;
     }
 
     public static final class ImmutableIndirect {
-        @Serialized public final int v = 0;
+        @Serialized
+        public final int v = 0;
     }
 
     public static final class ImmutableIndirectMid {
-        @Serialized public final ImmutableIndirect v = null;
+        @Serialized
+        public final ImmutableIndirect v = null;
     }
 
     public static final class ImmutableIndirectRoot {
-        @Serialized public final ImmutableIndirectMid v = null;
+        @Serialized
+        public final ImmutableIndirectMid v = null;
     }
 
     public static abstract class PolymorphicFieldType {
-        @Serialized public int x;
+        @Serialized
+        public int x;
 
         public abstract int f();
     }
@@ -816,7 +828,8 @@ public final class SerializationTests {
     }
 
     public static final class PolymorphicFieldHolder {
-        @Serialized public PolymorphicFieldType value;
+        @Serialized
+        public PolymorphicFieldType value;
     }
 
     static final class PolymorphicFieldTypeSerializer implements Serializer<PolymorphicFieldType> {
