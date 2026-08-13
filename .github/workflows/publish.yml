@@ -6,7 +6,6 @@ on:
 
 permissions:
   contents: write
-  packages: write
 
 jobs:
   publish:
@@ -33,9 +32,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - name: Publish to GitHub Packages
-        run: ./gradlew -Psemver='${{ github.event.release.tag_name }}' publish
+      - name: Publish to Maven Central
+        run: ./gradlew -Psemver='${{ github.event.release.tag_name }}' publishToMavenCentral
         env:
-          GITHUB_MAVEN_URL: 'https://maven.pkg.github.com/${{ github.repository }}'
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}

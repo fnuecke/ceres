@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'maven-publish'
+    id 'com.vanniktech.maven.publish' version '0.34.0'
 }
 
 def getGitRef() {
@@ -36,23 +36,38 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.8.2'
 }
 
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            groupId = project.group
-            artifactId = project.name
-            version = semver
-            artifact jar
-        }
+tasks.withType(AbstractArchiveTask).configureEach {
+    archiveVersion = semver
+}
+
+mavenPublishing {
+    publishToMavenCentral()
+    if (providers.gradleProperty('signingInMemoryKey').present) {
+        signAllPublications()
     }
-    repositories {
-        maven {
-            name = "GitHubPackages"
-            url = System.getenv("GITHUB_MAVEN_URL") ?: ""
-            credentials {
-                username = System.getenv("GITHUB_ACTOR")
-                password = System.getenv("GITHUB_TOKEN")
+
+    coordinates(group.toString(), project.name, semver.toString())
+
+    pom {
+        name = 'Ceres'
+        description = 'A simple serialization library.'
+        url = 'https://github.com/fnuecke/ceres'
+        licenses {
+            license {
+                name = 'MIT License'
+                url = 'https://github.com/fnuecke/ceres/blob/main/LICENSE'
             }
+        }
+        developers {
+            developer {
+                id = 'fnuecke'
+                name = 'Florian Nücke'
+            }
+        }
+        scm {
+            connection = 'scm:git:https://github.com/fnuecke/ceres.git'
+            developerConnection = 'scm:git:ssh://git@github.com/fnuecke/ceres.git'
+            url = 'https://github.com/fnuecke/ceres'
         }
     }
 }
