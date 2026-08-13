@@ -66,7 +66,7 @@ public class Example {
 
         ByteBuffer serialized = BinarySerialization.serialize(new MySerializableType());
 
-        // Deserialize into a new object. This requires Example to have a default constructor.
+        // Deserialize into a new object. This requires MySerializableType to have a default constructor.
         MySerializableType deserialized = BinarySerialization.deserialize(serialized, MySerializableType.class);
 
         // Deserialize into an existing object, if possible.
@@ -116,27 +116,14 @@ public class Example {
 
 ## Maven
 
-Ceres can be included into a project via the Github Package Repository. See [the documentation][GithubPackagesGradle]
-for more information on how to set that up. In short, you'll want to add your username and a public access token into
-your `~/.gradle/gradle.properties` and use those variables in your repository declaration. Note that the public access
-token will need `read:packages` permissions.
+Ceres is published to Maven Central.
 
-For example, using Gradle:
-
-```groovy
+```kotlin
 repositories {
-  maven {
-    url = uri("https://maven.pkg.github.com/fnuecke/ceres")
-    credentials {
-      username = project.findProperty("gpr.user") ?: System.getenv("USERNAME")
-      password = project.findProperty("gpr.key") ?: System.getenv("TOKEN")
-    }
-  }
+    mavenCentral()
 }
 
 dependencies {
-  implementation 'li.cil.ceres:ceres:0.0.4'
+    implementation("li.cil.ceres:ceres:0.0.6")
 }
 ```
-
-[GithubPackagesGradle]: https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-gradle-registry
