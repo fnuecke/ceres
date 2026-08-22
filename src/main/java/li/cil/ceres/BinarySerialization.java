@@ -72,8 +72,8 @@ public final class BinarySerialization {
         }
         if (version != VERSION) {
             throw new SerializationException(String.format(
-                    "Unsupported binary format version [%d], expected [%d].",
-                    version, VERSION));
+                "Unsupported binary format version [%d], expected [%d].",
+                version, VERSION));
         }
 
         return Ceres.getSerializer(type).deserialize(new Deserializer(stream), type, into);
@@ -153,8 +153,8 @@ public final class BinarySerialization {
     private static Object getEnumConstant(final Class<?> type, final Object[] enumConstants, final int ordinal) {
         if (ordinal < 0 || ordinal >= enumConstants.length) {
             throw new SerializationException(String.format(
-                    "Enum ordinal [%d] is out of range for type [%s], which has [%d] constants.",
-                    ordinal, type.getName(), enumConstants.length));
+                "Enum ordinal [%d] is out of range for type [%s], which has [%d] constants.",
+                ordinal, type.getName(), enumConstants.length));
         }
 
         return enumConstants[ordinal];
@@ -168,8 +168,8 @@ public final class BinarySerialization {
 
         if (Enum.class.isAssignableFrom(componentType)) {
             throw new SerializationException(String.format(
-                    "Cannot serialize arrays with abstract enum component type [%s]. Use a concrete enum type.",
-                    componentType.getName()));
+                "Cannot serialize arrays with abstract enum component type [%s]. Use a concrete enum type.",
+                componentType.getName()));
         }
 
         return ARRAY_SERIALIZERS.get(componentType);

@@ -43,11 +43,11 @@ public final class ByteBufferSerializer implements Serializer<ByteBuffer> {
     public ByteBuffer deserialize(final DeserializationVisitor visitor, final Class<ByteBuffer> type, @Nullable final Object value) throws SerializationException {
         ByteBuffer buffer = (ByteBuffer) value;
         if (!visitor.exists("capacity") ||
-                !visitor.exists("position") ||
-                !visitor.exists("limit") ||
-                !visitor.exists("mark") ||
-                !visitor.exists("bigEndian") ||
-                !visitor.exists("value")) {
+            !visitor.exists("position") ||
+            !visitor.exists("limit") ||
+            !visitor.exists("mark") ||
+            !visitor.exists("bigEndian") ||
+            !visitor.exists("value")) {
             return buffer;
         }
 

@@ -649,16 +649,16 @@ public final class SerializationTests {
             if (o == null || getClass() != o.getClass()) return false;
             final Flat flat = (Flat) o;
             return byteValue == flat.byteValue &&
-                    shortValue == flat.shortValue &&
-                    intValue == flat.intValue &&
-                    longValue == flat.longValue &&
-                    Float.compare(flat.floatValue, floatValue) == 0 &&
-                    Double.compare(flat.doubleValue, doubleValue) == 0 &&
-                    Arrays.equals(byteArrayValue, flat.byteArrayValue) &&
-                    Arrays.equals(intArrayValue, flat.intArrayValue) &&
-                    Arrays.equals(longArrayValue, flat.longArrayValue) &&
-                    Objects.equals(stringValue, flat.stringValue) &&
-                    Objects.equals(uuidValue, flat.uuidValue);
+                shortValue == flat.shortValue &&
+                intValue == flat.intValue &&
+                longValue == flat.longValue &&
+                Float.compare(flat.floatValue, floatValue) == 0 &&
+                Double.compare(flat.doubleValue, doubleValue) == 0 &&
+                Arrays.equals(byteArrayValue, flat.byteArrayValue) &&
+                Arrays.equals(intArrayValue, flat.intArrayValue) &&
+                Arrays.equals(longArrayValue, flat.longArrayValue) &&
+                Objects.equals(stringValue, flat.stringValue) &&
+                Objects.equals(uuidValue, flat.uuidValue);
         }
 
         @Override

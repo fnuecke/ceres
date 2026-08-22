@@ -33,8 +33,8 @@ final class CompiledSerializer {
                 return (MethodHandles.Lookup) unsafe.getObject(implLookupBase, implLookupOffset);
             } catch (final Throwable e) {
                 System.getLogger(CompiledSerializer.class.getName()).log(System.Logger.Level.DEBUG,
-                        "Could not obtain the trusted lookup. Types whose package is not open to us " +
-                                "will use reflection-based serializers.", e);
+                    "Could not obtain the trusted lookup. Types whose package is not open to us " +
+                        "will use reflection-based serializers.", e);
                 return null;
             }
         }
@@ -44,8 +44,8 @@ final class CompiledSerializer {
     private static Class<?> defineHiddenClass(final Class<?> parentType, final byte[] bytecode) {
         try {
             return MethodHandles.privateLookupIn(parentType, MethodHandles.lookup())
-                    .defineHiddenClass(bytecode, false, MethodHandles.Lookup.ClassOption.NESTMATE)
-                    .lookupClass();
+                .defineHiddenClass(bytecode, false, MethodHandles.Lookup.ClassOption.NESTMATE)
+                .lookupClass();
         } catch (final IllegalAccessException ignored) {
             // Fall through to the legacy lookup.
         }
@@ -54,8 +54,8 @@ final class CompiledSerializer {
         if (trustedLookup != null) {
             try {
                 return trustedLookup.in(parentType)
-                        .defineHiddenClass(bytecode, false, MethodHandles.Lookup.ClassOption.NESTMATE)
-                        .lookupClass();
+                    .defineHiddenClass(bytecode, false, MethodHandles.Lookup.ClassOption.NESTMATE)
+                    .lookupClass();
             } catch (final IllegalAccessException ignored) {
             }
         }
@@ -109,14 +109,14 @@ final class CompiledSerializer {
             }
         };
         cw.visit(Opcodes.V1_8,
-                Opcodes.ACC_PUBLIC + Opcodes.ACC_FINAL,
-                className,
-                classSignature.toString(),
-                Type.getInternalName(Object.class),
-                new String[]{
-                        Type.getInternalName(Serializer.class),
-                        Type.getInternalName(GeneratedSerializer.class)
-                });
+            Opcodes.ACC_PUBLIC + Opcodes.ACC_FINAL,
+            className,
+            classSignature.toString(),
+            Type.getInternalName(Object.class),
+            new String[]{
+                Type.getInternalName(Serializer.class),
+                Type.getInternalName(GeneratedSerializer.class)
+            });
 
         // Constructor
         final MethodVisitor init = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
@@ -145,7 +145,7 @@ final class CompiledSerializer {
 
         // serialize()
         final MethodVisitor serialize = cw.visitMethod(Opcodes.ACC_PUBLIC + Opcodes.ACC_FINAL, "serialize", Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(SerializationVisitor.class), Type.getType(Class.class), Type.getType(Object.class)), null, new String[]{
-                Type.getInternalName(SerializationException.class)
+            Type.getInternalName(SerializationException.class)
         });
         serialize.visitCode();
         {
@@ -156,7 +156,7 @@ final class CompiledSerializer {
 
         // deserialize()
         final MethodVisitor deserialize = cw.visitMethod(Opcodes.ACC_PUBLIC + Opcodes.ACC_FINAL, "deserialize", Type.getMethodDescriptor(Type.getType(Object.class), Type.getType(DeserializationVisitor.class), Type.getType(Class.class), Type.getType(Object.class)), null, new String[]{
-                Type.getInternalName(SerializationException.class)
+            Type.getInternalName(SerializationException.class)
         });
         deserialize.visitCode();
         {
@@ -222,7 +222,7 @@ final class CompiledSerializer {
                 //     fieldValue.getClass() != fieldType)
                 mv.visitVarInsn(Opcodes.ALOAD, SERIALIZER_FIELD_VALUE_INDEX);
                 mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Type.getInternalName(Object.class),
-                        "getClass", "()Ljava/lang/Class;", false);
+                    "getClass", "()Ljava/lang/Class;", false);
                 mv.visitLdcInsn(Type.getType(fieldType));
                 mv.visitJumpInsn(Opcodes.IF_ACMPEQ, nothrowLabel);
                 {
@@ -230,7 +230,7 @@ final class CompiledSerializer {
                     mv.visitLdcInsn(Type.getType(fieldType));
                     mv.visitLdcInsn(false);
                     mv.visitMethodInsn(Opcodes.INVOKESTATIC, Type.getInternalName(Ceres.class),
-                            "getSerializer", "(Ljava/lang/Class;Z)Lli/cil/ceres/api/Serializer;", false);
+                        "getSerializer", "(Ljava/lang/Class;Z)Lli/cil/ceres/api/Serializer;", false);
                     mv.visitInsn(Opcodes.DUP);
                     // if (serializer != null &&
                     mv.visitJumpInsn(Opcodes.IFNULL, throwDedupLabel);
@@ -260,9 +260,9 @@ final class CompiledSerializer {
                         mv.visitLdcInsn(0); // [..., {}, {}, 0]
                         mv.visitVarInsn(Opcodes.ALOAD, SERIALIZER_FIELD_VALUE_INDEX); // [..., {}, {}, 0, fieldValue]
                         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Type.getInternalName(Object.class),
-                                "getClass", "()Ljava/lang/Class;", false); // [..., {}, {}, 0, fieldValueType]
+                            "getClass", "()Ljava/lang/Class;", false); // [..., {}, {}, 0, fieldValueType]
                         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Type.getInternalName(Class.class),
-                                "getName", "()Ljava/lang/String;", false); // [..., {}, {}, 0, fieldValueTypeName]
+                            "getName", "()Ljava/lang/String;", false); // [..., {}, {}, 0, fieldValueTypeName]
                         mv.visitInsn(Opcodes.AASTORE); // [..., {fieldValueTypeName}]
 
                         // args[1] = type.getName();
@@ -284,11 +284,11 @@ final class CompiledSerializer {
                         mv.visitInsn(Opcodes.AASTORE); // [..., {fieldValueTypeName, fieldTypeName}]
 
                         mv.visitMethodInsn(Opcodes.INVOKESTATIC, Type.getInternalName(String.class),
-                                "format", "(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/String;", false); // [e, e, message]
+                            "format", "(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/String;", false); // [e, e, message]
                     }
 
                     mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Type.getInternalName(SerializationException.class),
-                            "<init>", "(Ljava/lang/String;)V", false); // [e]
+                        "<init>", "(Ljava/lang/String;)V", false); // [e]
                     mv.visitInsn(Opcodes.ATHROW); // []
                 }
                 // else
@@ -299,7 +299,7 @@ final class CompiledSerializer {
                     mv.visitLdcInsn(Type.getType(fieldType));
                     mv.visitVarInsn(Opcodes.ALOAD, SERIALIZER_FIELD_VALUE_INDEX);
                     mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(SerializationVisitor.class),
-                            "putObject", "(Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Object;)V", true);
+                        "putObject", "(Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Object;)V", true);
                 }
                 mv.visitLabel(endifLabel);
             }
@@ -311,10 +311,10 @@ final class CompiledSerializer {
             mv.visitLdcInsn("<super>");
             mv.visitLdcInsn(Type.getType(type));
             mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Type.getInternalName(Class.class),
-                    "getSuperclass", "()Ljava/lang/Class;", false);
+                "getSuperclass", "()Ljava/lang/Class;", false);
             mv.visitVarInsn(Opcodes.ALOAD, SERIALIZER_VALUE_INDEX);
             mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(SerializationVisitor.class),
-                    "putObject", "(Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Object;)V", true);
+                "putObject", "(Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Object;)V", true);
         }
 
         mv.visitInsn(Opcodes.RETURN);
@@ -371,7 +371,7 @@ final class CompiledSerializer {
             mv.visitVarInsn(Opcodes.ALOAD, DESERIALIZER_VISITOR_INDEX);
             mv.visitLdcInsn(field.getName());
             mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(DeserializationVisitor.class),
-                    "exists", "(Ljava/lang/String;)Z", true);
+                "exists", "(Ljava/lang/String;)Z", true);
             mv.visitJumpInsn(Opcodes.IFEQ, endifLabel);
             {
                 mv.visitVarInsn(Opcodes.ALOAD, DESERIALIZER_VALUE_INDEX);
@@ -415,10 +415,10 @@ final class CompiledSerializer {
             mv.visitLdcInsn("<super>");
             mv.visitLdcInsn(Type.getType(type));
             mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Type.getInternalName(Class.class),
-                    "getSuperclass", "()Ljava/lang/Class;", false);
+                "getSuperclass", "()Ljava/lang/Class;", false);
             mv.visitVarInsn(Opcodes.ALOAD, DESERIALIZER_VALUE_INDEX);
             mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(DeserializationVisitor.class),
-                    "getObject", "(Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Object;)Ljava/lang/Object;", true);
+                "getObject", "(Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Object;)Ljava/lang/Object;", true);
         }
 
         mv.visitVarInsn(Opcodes.ALOAD, DESERIALIZER_VALUE_INDEX);
@@ -431,14 +431,14 @@ final class CompiledSerializer {
         mv.visitVarInsn(Opcodes.ALOAD, SERIALIZER_VALUE_INDEX);
         mv.visitFieldInsn(Opcodes.GETFIELD, Type.getInternalName(type), field.getName(), Type.getDescriptor(fieldType));
         mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(SerializationVisitor.class),
-                name, Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class), Type.getType(fieldType)), true);
+            name, Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(String.class), Type.getType(fieldType)), true);
     }
 
     private static <T> void generateDeserializePrimitiveCall(final MethodVisitor mv, final Class<T> type, final Field field, final Class<?> fieldType, final String name) {
         mv.visitVarInsn(Opcodes.ALOAD, DESERIALIZER_VISITOR_INDEX);
         mv.visitLdcInsn(field.getName());
         mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(DeserializationVisitor.class),
-                name, Type.getMethodDescriptor(Type.getType(fieldType), Type.getType(String.class)), true);
+            name, Type.getMethodDescriptor(Type.getType(fieldType), Type.getType(String.class)), true);
         mv.visitFieldInsn(Opcodes.PUTFIELD, Type.getInternalName(type), field.getName(), Type.getDescriptor(fieldType));
     }
 
@@ -449,6 +449,6 @@ final class CompiledSerializer {
         mv.visitVarInsn(Opcodes.ALOAD, DESERIALIZER_VALUE_INDEX);
         mv.visitFieldInsn(Opcodes.GETFIELD, Type.getInternalName(type), field.getName(), Type.getDescriptor(fieldType));
         mv.visitMethodInsn(Opcodes.INVOKEINTERFACE, Type.getInternalName(DeserializationVisitor.class),
-                "getObject", "(Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Object;)Ljava/lang/Object;", true);
+            "getObject", "(Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Object;)Ljava/lang/Object;", true);
     }
 }
