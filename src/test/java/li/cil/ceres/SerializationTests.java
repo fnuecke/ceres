@@ -5,6 +5,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -12,10 +13,91 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public final class SerializationTests {
+    @Test
+    public void excessiveDeclaredArrayLengthIsRejected() {
+        assertDeclaredArrayLengthIsRejected(0x08000000, "134217728");
+    }
+
+    @Test
+    public void deserializingThroughAStreamThatUnderReportsAvailableWorks() throws IOException {
+        final Flat value = new Flat();
+        value.byteArrayValue = new byte[4096];
+        value.longArrayValue = new long[512];
+        value.stringValue = "wrapped";
+
+        final ByteBuffer serialized = BinarySerialization.serialize(value, Flat.class);
+        final byte[] bytes = new byte[serialized.remaining()];
+        serialized.get(bytes);
+
+        final ByteArrayOutputStream compressed = new ByteArrayOutputStream();
+        try (GZIPOutputStream gzip = new GZIPOutputStream(compressed)) {
+            gzip.write(bytes);
+        }
+
+        final Flat restored = BinarySerialization.deserialize(
+            new DataInputStream(new GZIPInputStream(new ByteArrayInputStream(compressed.toByteArray()))), Flat.class);
+
+        assertEquals(value, restored);
+    }
+
+    @Test
+    public void negativeDeclaredArrayLengthIsRejected() {
+        assertDeclaredArrayLengthIsRejected(0xFFFFFFFF, "-1");
+    }
+
+    private static void assertDeclaredArrayLengthIsRejected(final int length, final String reportedLength) {
+        final SerializationException e = assertThrows(SerializationException.class,
+            () -> BinarySerialization.deserialize(ByteBuffer.wrap(withPatchedArrayLength(length)), Flat.class));
+
+        final StringBuilder messages = new StringBuilder();
+        for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+            assertFalse(cause instanceof OutOfMemoryError || cause instanceof NegativeArraySizeException,
+                "the length must be rejected before anything is allocated for it, got: " + cause);
+            messages.append(cause.getMessage()).append('\n');
+        }
+
+        assertTrue(messages.toString().contains(reportedLength),
+            "the reported error must name the refused length, got: " + messages);
+    }
+
+    private static int indexOf(final byte[] haystack, final byte[] needle) {
+        outer:
+        for (int i = 0; i + needle.length <= haystack.length; i++) {
+            for (int j = 0; j < needle.length; j++) {
+                if (haystack[i + j] != needle[j]) {
+                    continue outer;
+                }
+            }
+            return i;
+        }
+        return -1;
+    }
+
+    private static byte[] withPatchedArrayLength(final int length) {
+        final Flat value = new Flat();
+        value.byteArrayValue = new byte[]{0x7A, 0x7B, 0x7C, 0x7D};
+
+        final ByteBuffer serialized = BinarySerialization.serialize(value, Flat.class);
+        final byte[] bytes = new byte[serialized.remaining()];
+        serialized.get(bytes);
+
+        final int offset = indexOf(bytes, new byte[]{0, 0, 0, 4, 0x7A, 0x7B, 0x7C, 0x7D});
+        assertTrue(offset >= 0, "expected to find the serialized byte array preceded by its length");
+
+        bytes[offset] = (byte) (length >>> 24);
+        bytes[offset + 1] = (byte) (length >>> 16);
+        bytes[offset + 2] = (byte) (length >>> 8);
+        bytes[offset + 3] = (byte) length;
+
+        return bytes;
+    }
+
     @AfterEach
     public void unregisterTestSerializers() {
         Ceres.putSerializer(PolymorphicFieldType.class, null);

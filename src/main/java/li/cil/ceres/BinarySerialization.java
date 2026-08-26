@@ -133,6 +133,7 @@ public final class BinarySerialization {
         }
     }
 
+    private static final long MAX_ARRAY_BYTES = 64L * 1024 * 1024;
     private static final int ENUM_NULL_VALUE = -1;
     private static final Map<Class<?>, ArraySerializer> ARRAY_SERIALIZERS;
     private static final ArraySerializer ENUM_ARRAY_SERIALIZER = new EnumArraySerializer();
@@ -148,6 +149,14 @@ public final class BinarySerialization {
         ARRAY_SERIALIZERS.put(float.class, new FloatArraySerializer());
         ARRAY_SERIALIZERS.put(double.class, new DoubleArraySerializer());
         ARRAY_SERIALIZERS.put(String.class, new StringArraySerializer());
+    }
+
+    private static int readArrayLength(final DataInputStream stream, final int bytesPerElement) throws IOException {
+        final int length = stream.readInt();
+        if (length < 0 || (long) length * bytesPerElement > MAX_ARRAY_BYTES) {
+            throw new SerializationException("Invalid array length [" + length + "].");
+        }
+        return length;
     }
 
     private static Object getEnumConstant(final Class<?> type, final Object[] enumConstants, final int ordinal) {
@@ -455,7 +464,7 @@ public final class BinarySerialization {
                 }
 
                 try {
-                    final int length = stream.readInt();
+                    final int length = readArrayLength(stream, Integer.BYTES);
                     Object[] data = (Object[]) into;
                     if (data == null || data.length != length) {
                         data = (Object[]) Array.newInstance(componentType, length);
@@ -507,7 +516,7 @@ public final class BinarySerialization {
         @Override
         public Object deserialize(final DataInputStream stream, final Class<?> type, final Object into) {
             try {
-                final int length = stream.readInt();
+                final int length = readArrayLength(stream, Byte.BYTES);
                 boolean[] data = (boolean[]) into;
                 if (data == null || data.length != length) {
                     data = new boolean[length];
@@ -538,7 +547,7 @@ public final class BinarySerialization {
         @Override
         public Object deserialize(final DataInputStream stream, final Class<?> type, final Object into) {
             try {
-                final int length = stream.readInt();
+                final int length = readArrayLength(stream, Byte.BYTES);
                 byte[] data = (byte[]) into;
                 if (data == null || data.length != length) {
                     data = new byte[length];
@@ -569,7 +578,7 @@ public final class BinarySerialization {
         @Override
         public Object deserialize(final DataInputStream stream, final Class<?> type, final Object into) {
             try {
-                final int length = stream.readInt();
+                final int length = readArrayLength(stream, Character.BYTES);
                 char[] data = (char[]) into;
                 if (data == null || data.length != length) {
                     data = new char[length];
@@ -602,7 +611,7 @@ public final class BinarySerialization {
         @Override
         public Object deserialize(final DataInputStream stream, final Class<?> type, final Object into) {
             try {
-                final int length = stream.readInt();
+                final int length = readArrayLength(stream, Short.BYTES);
                 short[] data = (short[]) into;
                 if (data == null || data.length != length) {
                     data = new short[length];
@@ -635,7 +644,7 @@ public final class BinarySerialization {
         @Override
         public Object deserialize(final DataInputStream stream, final Class<?> type, final Object into) {
             try {
-                final int length = stream.readInt();
+                final int length = readArrayLength(stream, Integer.BYTES);
                 int[] data = (int[]) into;
                 if (data == null || data.length != length) {
                     data = new int[length];
@@ -668,7 +677,7 @@ public final class BinarySerialization {
         @Override
         public Object deserialize(final DataInputStream stream, final Class<?> type, final Object into) {
             try {
-                final int length = stream.readInt();
+                final int length = readArrayLength(stream, Long.BYTES);
                 long[] data = (long[]) into;
                 if (data == null || data.length != length) {
                     data = new long[length];
@@ -701,7 +710,7 @@ public final class BinarySerialization {
         @Override
         public Object deserialize(final DataInputStream stream, final Class<?> type, final Object into) {
             try {
-                final int length = stream.readInt();
+                final int length = readArrayLength(stream, Float.BYTES);
                 float[] data = (float[]) into;
                 if (data == null || data.length != length) {
                     data = new float[length];
@@ -734,7 +743,7 @@ public final class BinarySerialization {
         @Override
         public Object deserialize(final DataInputStream stream, final Class<?> type, final Object into) {
             try {
-                final int length = stream.readInt();
+                final int length = readArrayLength(stream, Double.BYTES);
                 double[] data = (double[]) into;
                 if (data == null || data.length != length) {
                     data = new double[length];
@@ -773,7 +782,7 @@ public final class BinarySerialization {
             final Object[] enumConstants = componentType.getEnumConstants();
 
             try {
-                final int length = stream.readInt();
+                final int length = readArrayLength(stream, Integer.BYTES);
                 Enum[] data = (Enum[]) into;
                 if (data == null || data.length != length) {
                     data = (Enum[]) Array.newInstance(componentType, length);
@@ -814,7 +823,7 @@ public final class BinarySerialization {
         @Override
         public Object deserialize(final DataInputStream stream, final Class<?> type, final Object into) {
             try {
-                final int length = stream.readInt();
+                final int length = readArrayLength(stream, Integer.BYTES);
                 String[] data = (String[]) into;
                 if (data == null || data.length != length) {
                     data = new String[length];
