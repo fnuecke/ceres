@@ -12,7 +12,7 @@ fun getGitRef(): String = try {
     "unknown"
 }
 
-val semver: String by project
+val semver = providers.gradleProperty("semver").get()
 
 version = "$semver+${getGitRef()}"
 group = "li.cil.ceres"
